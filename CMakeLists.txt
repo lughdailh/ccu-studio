@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(obs-ccu VERSION 0.2.2 LANGUAGES CXX)
+project(obs-ccu VERSION 0.2.3 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)

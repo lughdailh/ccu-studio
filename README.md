@@ -4,7 +4,7 @@ Plugin de control de càmeres per a OBS Studio. Reuneix fins a quatre fonts de
 vídeo en una finestra CCU, permet comparar-les simultàniament i aplica
 correccions persistents a la font original.
 
-La versió actual és **0.2.2** i està orientada a proves en macOS. El disseny
+La versió actual és **0.2.3** i està orientada a proves en macOS. El disseny
 tècnic evita API exclusives de macOS per facilitar la futura versió Windows.
 
 ## Funcions actuals

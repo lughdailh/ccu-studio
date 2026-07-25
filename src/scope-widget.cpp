@@ -1,5 +1,7 @@
 #include "scope-widget.hpp"
 
+#include <obs-module.h>
+
 #include <QImage>
 #include <QPainter>
 #include <QPainterPath>
@@ -40,7 +42,7 @@ void ScopeWidget::paintEvent(QPaintEvent *) {
   if (data_.empty()) {
     painter.setPen(QColor(155, 160, 168));
     painter.drawText(area, Qt::AlignCenter,
-                     QStringLiteral("Selecciona una font de vídeo"));
+                     QString::fromUtf8(obs_module_text("ScopeNoSource")));
     return;
   }
   switch (type_) {

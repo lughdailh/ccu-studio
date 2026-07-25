@@ -62,10 +62,10 @@ struct SliderSpec {
   int neutral;
 };
 constexpr SliderSpec specs[] = {
-    {"Vermell", 50, 200, 100},   {"Verd", 50, 200, 100},
-    {"Blau", 50, 200, 100},      {"Brillantor", -100, 100, 0},
-    {"Contrast", 0, 200, 100},   {"Gamma", 20, 300, 100},
-    {"Saturació", 0, 200, 100},
+    {"SliderRed", 50, 200, 100},        {"SliderGreen", 50, 200, 100},
+    {"SliderBlue", 50, 200, 100},       {"SliderBrightness", -100, 100, 0},
+    {"SliderContrast", 0, 200, 100},    {"SliderGamma", 20, 300, 100},
+    {"SliderSaturation", 0, 200, 100},
 };
 
 bool enumerateVideoSources(void *data, obs_source_t *source) {
@@ -181,8 +181,8 @@ bool captureSample(obs_source_t *source, const QPointF &normalized,
 } // namespace
 
 CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
-  setWindowTitle(QStringLiteral("CCU OBS — prova ") +
-                 QString::fromLatin1(CCU_VERSION));
+  setWindowTitle(QString::fromUtf8(obs_module_text("WindowTitle"))
+                     .arg(QString::fromLatin1(CCU_VERSION)));
   setWindowFlag(Qt::Window, true);
   setModal(false);
 
@@ -218,7 +218,9 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
     previewLayout->setContentsMargins(3, 3, 3, 3);
     channel.preview = new ObsDisplayWidget(channel.previewShell);
     previewLayout->addWidget(channel.preview);
-    auto *label = new QLabel(QStringLiteral("Càmera %1").arg(i + 1), channel.frame);
+    auto *label = new QLabel(
+        QString::fromUtf8(obs_module_text("CameraLabel")).arg(i + 1),
+        channel.frame);
     label->setAlignment(Qt::AlignCenter);
     layout->addWidget(channel.sourceBox);
     layout->addWidget(channel.previewShell);
@@ -237,7 +239,8 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
 
   auto *selectors = new QHBoxLayout;
   selectors->addStretch();
-  selectors->addWidget(new QLabel(QStringLiteral("Càmera activa:"), this));
+  selectors->addWidget(
+      new QLabel(QString::fromUtf8(obs_module_text("ActiveCameraLabel")), this));
   for (int i = 0; i < 4; ++i) {
     selectButtons_[i] = new QPushButton(QString::number(i + 1), this);
     selectButtons_[i]->setCheckable(true);
@@ -251,11 +254,14 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
 
   auto *tools = new QHBoxLayout;
   tools->addStretch();
-  pickerButton_ = new QPushButton(QStringLiteral("⌖  Comptagotes"), this);
+  pickerButton_ =
+      new QPushButton(QString::fromUtf8(obs_module_text("PickerButton")), this);
   pickerButton_->setCheckable(true);
-  zoomButton_ = new QPushButton(QStringLiteral("🔍  Lupa"), this);
+  zoomButton_ =
+      new QPushButton(QString::fromUtf8(obs_module_text("ZoomButton")), this);
   zoomButton_->setCheckable(true);
-  auto *reset = new QPushButton(QStringLiteral("Restablir"), this);
+  auto *reset =
+      new QPushButton(QString::fromUtf8(obs_module_text("ResetButton")), this);
   tools->addWidget(pickerButton_);
   tools->addWidget(zoomButton_);
   tools->addWidget(reset);
@@ -272,8 +278,8 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
   auto *rightLayout = new QVBoxLayout(rightPanel);
   rightLayout->setContentsMargins(10, 10, 10, 10);
   rightLayout->setSpacing(8);
-  status_ =
-      new QLabel(QStringLiteral("Selecciona una font per començar."), rightPanel);
+  status_ = new QLabel(
+      QString::fromUtf8(obs_module_text("StatusSelectSource")), rightPanel);
   status_->setWordWrap(true);
   status_->setMinimumHeight(38);
   rightLayout->addWidget(status_);
@@ -282,22 +288,25 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
   histogram_ = new ScopeWidget(ScopeWidget::Type::Histogram, scopeTabs);
   waveform_ = new ScopeWidget(ScopeWidget::Type::Waveform, scopeTabs);
   vectorscope_ = new ScopeWidget(ScopeWidget::Type::Vectorscope, scopeTabs);
-  scopeTabs->addTab(histogram_, QStringLiteral("Histograma RGB"));
-  scopeTabs->addTab(waveform_, QStringLiteral("Waveform"));
-  scopeTabs->addTab(vectorscope_, QStringLiteral("Vectorscopi"));
+  scopeTabs->addTab(histogram_, QString::fromUtf8(obs_module_text("TabHistogram")));
+  scopeTabs->addTab(waveform_, QString::fromUtf8(obs_module_text("TabWaveform")));
+  scopeTabs->addTab(vectorscope_,
+                    QString::fromUtf8(obs_module_text("TabVectorscope")));
   rightLayout->addWidget(scopeTabs, 1);
 
-  auto *generalGroup =
-      new QGroupBox(QStringLiteral("Nivells"), rightPanel);
+  auto *generalGroup = new QGroupBox(
+      QString::fromUtf8(obs_module_text("GroupLevels")), rightPanel);
   auto *generalControls = new QGridLayout(generalGroup);
-  auto *rgbGroup = new QGroupBox(QStringLiteral("Nivells RGB"), rightPanel);
+  auto *rgbGroup = new QGroupBox(
+      QString::fromUtf8(obs_module_text("GroupLevelsRGB")), rightPanel);
   auto *rgbControls = new QGridLayout(rgbGroup);
 
   QSlider **sliders[] = {&red_, &green_, &blue_, &brightness_,
                          &contrast_, &gamma_, &saturation_};
   auto addControl = [&](QGridLayout *layout, int row, int index) {
     auto *label =
-        new QLabel(QString::fromUtf8(specs[index].label), layout->parentWidget());
+        new QLabel(QString::fromUtf8(obs_module_text(specs[index].label)),
+                   layout->parentWidget());
     *sliders[index] =
         new QSlider(Qt::Horizontal, layout->parentWidget());
     (*sliders[index])->setRange(specs[index].minimum, specs[index].maximum);
@@ -374,7 +383,7 @@ void CcuWindow::refreshSources() {
     const QString current = channel.sourceBox->currentText();
     channel.sourceBox->blockSignals(true);
     channel.sourceBox->clear();
-    channel.sourceBox->addItem(QStringLiteral("— Sense font —"));
+    channel.sourceBox->addItem(QString::fromUtf8(obs_module_text("NoSourceItem")));
     channel.sourceBox->addItems(names);
     const int match = channel.sourceBox->findText(current);
     if (match >= 0)
@@ -446,13 +455,14 @@ void CcuWindow::updateSelectedUi() {
     obs_data_release(settings);
     obs_source_release(filter);
     status_->setText(
-        QStringLiteral("Editant la càmera %1: %2")
+        QString::fromUtf8(obs_module_text("StatusEditingCamera"))
             .arg(selected_ + 1)
             .arg(channels_[selected_].sourceBox->currentText()));
   } else {
     for (int i = 0; i < 7; ++i)
       sliders[i]->setValue(specs[i].neutral);
-    status_->setText(QStringLiteral("La càmera %1 no té cap font.").arg(selected_ + 1));
+    status_->setText(QString::fromUtf8(obs_module_text("StatusNoSource"))
+                          .arg(selected_ + 1));
   }
   updating_ = false;
 }
@@ -481,29 +491,33 @@ void CcuWindow::resetControls() {
     sliders[i]->setValue(specs[i].neutral);
   updating_ = false;
   applyControls();
-  status_->setText(QStringLiteral("Correcció restablerta."));
+  status_->setText(QString::fromUtf8(obs_module_text("StatusCorrectionReset")));
 }
 
 void CcuWindow::togglePicker() {
   pickerActive_ = pickerButton_->isChecked();
   for (Channel &channel : channels_)
     channel.preview->setPickMode(pickerActive_);
-  status_->setText(
-      pickerActive_
-          ? QStringLiteral("Comptagotes actiu: clica només dins del vídeo.")
-          : QStringLiteral("Comptagotes desactivat."));
+  status_->setText(QString::fromUtf8(obs_module_text(
+      pickerActive_ ? "StatusPickerActive" : "StatusPickerInactive")));
 }
 
 void CcuWindow::toggleZoom() {
   zoomed_ = zoomButton_->isChecked();
   relayoutChannels();
-  status_->setText(zoomed_ ? QStringLiteral("Vista ampliada de la càmera activa.")
-                           : QStringLiteral("Vista de quatre càmeres."));
+  status_->setText(QString::fromUtf8(obs_module_text(
+      zoomed_ ? "StatusZoomActive" : "StatusZoomInactive")));
 }
 
 void CcuWindow::relayoutChannels() {
   if (!previewGrid_)
     return;
+  // QGridLayout::addWidget doesn't remove a widget's previous cell when
+  // re-adding it elsewhere, so re-placing frames on every zoom toggle
+  // without first removing them piled up stale duplicate grid entries and
+  // corrupted the layout after a couple of toggles.
+  for (Channel &channel : channels_)
+    previewGrid_->removeWidget(channel.frame);
   if (zoomed_) {
     for (int i = 0; i < 4; ++i)
       channels_[i].frame->setVisible(i == selected_);
@@ -585,13 +599,14 @@ void CcuWindow::sampleWhite(int channelIndex, const QPointF &normalized) {
       updating_ = false;
       applyControls();
       status_->setText(
-          QStringLiteral("Mostra RGB: %1, %2, %3")
+          QString::fromUtf8(obs_module_text("StatusSampleRGB"))
               .arg(sample[0], 0, 'f', 3)
               .arg(sample[1], 0, 'f', 3)
               .arg(sample[2], 0, 'f', 3));
     }
   } else {
-    status_->setText(QStringLiteral("No s'ha pogut llegir aquest fotograma."));
+    status_->setText(
+        QString::fromUtf8(obs_module_text("StatusCaptureFailed")));
   }
   obs_source_release(filter);
   pickerButton_->setChecked(false);

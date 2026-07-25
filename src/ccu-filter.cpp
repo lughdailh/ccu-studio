@@ -128,7 +128,7 @@ MODULE_EXPORT const char *obs_module_description(void) {
 bool obs_module_load(void) {
   obs_register_source(&filterInfo);
   toolsAction = static_cast<QAction *>(
-      obs_frontend_add_tools_menu_qaction("CCU OBS…"));
+      obs_frontend_add_tools_menu_qaction(obs_module_text("ToolsMenuItem")));
   QObject::connect(toolsAction, &QAction::triggered, [] { showCcuWindow(); });
   obs_frontend_add_event_callback(frontendEvent, nullptr);
   blog(LOG_INFO, "[CCU OBS] Loaded version %s", CCU_VERSION);
