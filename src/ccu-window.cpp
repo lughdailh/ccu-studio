@@ -191,9 +191,11 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
 
   leftPanel_ = new QWidget(this);
   auto *leftPanel = leftPanel_;
-  auto *leftLayout = new QVBoxLayout(leftPanel);
+  leftLayout_ = new QVBoxLayout(leftPanel);
+  auto *leftLayout = leftLayout_;
   leftLayout->setContentsMargins(0, 0, 0, 0);
   leftLayout->setSpacing(8);
+
   previewGrid_ = new QGridLayout;
   previewGrid_->setContentsMargins(0, 0, 0, 0);
   previewGrid_->setHorizontalSpacing(8);
@@ -202,6 +204,7 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
   previewGrid_->setColumnStretch(1, 1);
   previewGrid_->setRowStretch(0, 1);
   previewGrid_->setRowStretch(1, 1);
+  leftLayout->addLayout(previewGrid_, 1);
 
   for (int i = 0; i < 4; ++i) {
     Channel &channel = channels_[i];
@@ -225,7 +228,11 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
     layout->addWidget(channel.sourceBox);
     layout->addWidget(channel.previewShell);
     layout->addWidget(label);
-    previewGrid_->addWidget(channel.frame, i / 2, i % 2, Qt::AlignTop);
+    // No Qt::AlignTop here: that would force the widget to its sizeHint
+    // and pin it to the top of its cell regardless of size policy, which
+    // would stop the zoomed shell (Expanding policy, set dynamically in
+    // updatePreviewSizes) from ever actually growing into its cell.
+    previewGrid_->addWidget(channel.frame, i / 2, i % 2);
     connect(channel.sourceBox, &QComboBox::currentIndexChanged, this,
             [this, i](int) { chooseSource(i); });
     channel.preview->setClickHandler([this, i](const QPointF &position) {
@@ -235,7 +242,6 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
         selectChannel(i);
     });
   }
-  leftLayout->addLayout(previewGrid_, 1);
 
   auto *selectors = new QHBoxLayout;
   selectors->addStretch();
@@ -512,24 +518,38 @@ void CcuWindow::toggleZoom() {
 void CcuWindow::relayoutChannels() {
   if (!previewGrid_)
     return;
-  // QGridLayout::addWidget doesn't remove a widget's previous cell when
-  // re-adding it elsewhere, so re-placing frames on every zoom toggle
-  // without first removing them piled up stale duplicate grid entries and
-  // corrupted the layout after a couple of toggles.
-  for (Channel &channel : channels_)
-    previewGrid_->removeWidget(channel.frame);
-  if (zoomed_) {
-    for (int i = 0; i < 4; ++i)
-      channels_[i].frame->setVisible(i == selected_);
-    previewGrid_->addWidget(channels_[selected_].frame, 0, 0, 2, 2,
-                            Qt::AlignTop);
-  } else {
-    for (int i = 0; i < 4; ++i) {
-      previewGrid_->addWidget(channels_[i].frame, i / 2, i % 2, Qt::AlignTop);
-      channels_[i].frame->setVisible(true);
-    }
+  // Earlier attempts made the selected frame span both grid rows
+  // (addWidget(..., 0, 0, 2, 2)) or moved it into a separate sibling
+  // container. Both changed which layout/cell a widget belonged to, and
+  // both left the window either permanently taller (QGridLayout doesn't
+  // fully drop the minimum size a row-span asked for once the span is
+  // undone) or the zoomed preview's native OBS display view visually
+  // detached from its widget (reparenting an ObsDisplayWidget across
+  // different layouts left a stale render behind). Every frame now stays
+  // in its original (row, col) cell forever; "zooming" only hides the
+  // other three and zeroes their row/column stretch, so the selected
+  // cell's Expanding-policy shell (see updatePreviewSizes) is the only
+  // thing that ever grows.
+  for (int i = 0; i < 4; ++i) {
+    const bool isSelectedAndZoomed = zoomed_ && i == selected_;
+    channels_[i].frame->setSizePolicy(
+        QSizePolicy::Expanding,
+        isSelectedAndZoomed ? QSizePolicy::Expanding : QSizePolicy::Fixed);
+    channels_[i].frame->setVisible(!zoomed_ || i == selected_);
   }
+  const int selectedRow = selected_ / 2;
+  const int selectedCol = selected_ % 2;
+  for (int row = 0; row < 2; ++row)
+    previewGrid_->setRowStretch(row, (!zoomed_ || row == selectedRow) ? 1 : 0);
+  for (int col = 0; col < 2; ++col)
+    previewGrid_->setColumnStretch(col,
+                                   (!zoomed_ || col == selectedCol) ? 1 : 0);
   updatePreviewSizes();
+  // The shrinking preview shell can leave stale pixels behind in the area
+  // it no longer covers (the source combo box briefly appeared to be
+  // duplicated there) - force a full repaint of the affected area rather
+  // than relying on Qt's normal damage tracking to notice.
+  leftPanel_->update();
 }
 
 void CcuWindow::updatePreviewSizes() {
@@ -541,12 +561,25 @@ void CcuWindow::updatePreviewSizes() {
   // resizeEvent (that caused the preview to render at a stale, mismatched
   // size).
   const int totalWidth = leftPanel_->width();
-  const int spacing = previewGrid_->horizontalSpacing();
-  const int width =
-      zoomed_ ? totalWidth : std::max(1, (totalWidth - spacing) / 2);
-  const int height = previewShellHeightForWidth(width);
-  for (Channel &channel : channels_)
-    channel.previewShell->setFixedHeight(height);
+  const int columnWidth =
+      std::max(1, (totalWidth - previewGrid_->horizontalSpacing()) / 2);
+  const int rowHeight = previewShellHeightForWidth(columnWidth);
+  for (int i = 0; i < 4; ++i) {
+    QFrame *shell = channels_[i].previewShell;
+    if (zoomed_ && i == selected_) {
+      // Let the zeroed sibling row/column stretch (relayoutChannels) hand
+      // this cell all the available space, and let this shell actually
+      // grow to fill it - ObsDisplayWidget::draw() already letterboxes to
+      // the source's real aspect ratio, so it doesn't need to stay 16:9
+      // shaped itself.
+      shell->setMinimumHeight(0);
+      shell->setMaximumHeight(QWIDGETSIZE_MAX);
+      shell->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    } else {
+      shell->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+      shell->setFixedHeight(rowHeight);
+    }
+  }
 }
 
 void CcuWindow::resizeEvent(QResizeEvent *event) {

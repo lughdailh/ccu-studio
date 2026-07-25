@@ -12,6 +12,7 @@ class QPushButton;
 class QResizeEvent;
 class QSlider;
 class QTimer;
+class QVBoxLayout;
 class ObsDisplayWidget;
 class ScopeWidget;
 struct obs_source;
@@ -57,6 +58,7 @@ private:
   bool pickerActive_ = false;
   bool zoomed_ = false;
   QWidget *leftPanel_ = nullptr;
+  QVBoxLayout *leftLayout_ = nullptr;
   QGridLayout *previewGrid_ = nullptr;
   QPushButton *pickerButton_ = nullptr;
   QPushButton *zoomButton_ = nullptr;
