@@ -18,7 +18,7 @@ Tanca OBS i copia `obs-ccu.plugin` a:
 Torna a obrir OBS. El registre ha d'incloure:
 
 ```text
-[CCU OBS] Loaded version 0.1.2
+[CCU OBS] Loaded version 0.2.2
 ```
 
 ## Obrir i assignar càmeres
@@ -77,7 +77,7 @@ Comprova la ruta del bundle i busca `obs-ccu` al registre d'OBS.
 
 ### Els controls es mouen però la imatge no canvia
 
-Confirma que el títol mostra 0.1.2 o posterior i que la font conté el filtre
+Confirma que el títol mostra 0.2.2 o posterior i que la font conté el filtre
 `CCU OBS`. Reinicia OBS després de substituir un bundle.
 
 ### No hi ha imatge en un visor

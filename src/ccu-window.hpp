@@ -6,10 +6,14 @@
 
 class QComboBox;
 class QFrame;
+class QGridLayout;
 class QLabel;
 class QPushButton;
+class QResizeEvent;
 class QSlider;
+class QTimer;
 class ObsDisplayWidget;
+class ScopeWidget;
 struct obs_source;
 typedef struct obs_source obs_source_t;
 
@@ -20,9 +24,13 @@ public:
 
   void refreshSources();
 
+protected:
+  void resizeEvent(QResizeEvent *event) override;
+
 private:
   struct Channel {
     QFrame *frame = nullptr;
+    QFrame *previewShell = nullptr;
     QComboBox *sourceBox = nullptr;
     ObsDisplayWidget *preview = nullptr;
     obs_source_t *source = nullptr;
@@ -36,6 +44,9 @@ private:
   void togglePicker();
   void toggleZoom();
   void sampleWhite(int channel, const QPointF &normalized);
+  void updateScopes();
+  void relayoutChannels();
+  void updatePreviewSizes();
   obs_source_t *ensureFilter(obs_source_t *source);
   void loadAssignments();
   void saveAssignments() const;
@@ -45,6 +56,8 @@ private:
   int selected_ = 0;
   bool pickerActive_ = false;
   bool zoomed_ = false;
+  QWidget *leftPanel_ = nullptr;
+  QGridLayout *previewGrid_ = nullptr;
   QPushButton *pickerButton_ = nullptr;
   QPushButton *zoomButton_ = nullptr;
   QLabel *status_ = nullptr;
@@ -55,6 +68,10 @@ private:
   QSlider *contrast_ = nullptr;
   QSlider *gamma_ = nullptr;
   QSlider *saturation_ = nullptr;
+  ScopeWidget *histogram_ = nullptr;
+  ScopeWidget *waveform_ = nullptr;
+  ScopeWidget *vectorscope_ = nullptr;
+  QTimer *scopeTimer_ = nullptr;
   bool updating_ = false;
 };
 

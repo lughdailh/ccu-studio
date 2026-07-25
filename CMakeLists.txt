@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(obs-ccu VERSION 0.1.2 LANGUAGES CXX)
+project(obs-ccu VERSION 0.2.2 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -24,6 +24,10 @@ add_library(obs-ccu MODULE
   src/ccu-window.hpp
   src/obs-display-widget.cpp
   src/obs-display-widget.hpp
+  src/scope-data.cpp
+  src/scope-data.hpp
+  src/scope-widget.cpp
+  src/scope-widget.hpp
 )
 
 target_link_libraries(obs-ccu PRIVATE OBS::libobs OBS::obs-frontend-api Qt6::Widgets)
@@ -54,6 +58,13 @@ add_custom_command(TARGET obs-ccu POST_BUILD
 )
 
 include(CTest)
+if(BUILD_TESTING)
+  add_executable(scope-data-tests tests/scope-data.test.cpp src/scope-data.cpp)
+  target_include_directories(scope-data-tests PRIVATE src)
+  target_compile_features(scope-data-tests PRIVATE cxx_std_17)
+  add_test(NAME scope-data-tests COMMAND scope-data-tests)
+endif()
+
 if(BUILD_TESTING AND APPLE)
   add_executable(plugin-smoke tests/plugin-smoke.mm)
   target_compile_options(plugin-smoke PRIVATE -fobjc-arc)

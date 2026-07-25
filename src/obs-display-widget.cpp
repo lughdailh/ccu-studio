@@ -23,7 +23,7 @@ ObsDisplayWidget::ObsDisplayWidget(QWidget *parent) : QWidget(parent) {
   setAttribute(Qt::WA_NativeWindow);
   setMouseTracking(true);
   setMinimumSize(220, 124);
-  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 
 ObsDisplayWidget::~ObsDisplayWidget() {

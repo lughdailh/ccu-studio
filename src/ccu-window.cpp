@@ -1,5 +1,7 @@
 #include "ccu-window.hpp"
 #include "obs-display-widget.hpp"
+#include "scope-data.hpp"
+#include "scope-widget.hpp"
 
 #include <obs-frontend-api.h>
 #include <obs-module.h>
@@ -19,10 +21,13 @@
 #include <QPointer>
 #include <QPushButton>
 #include <QGuiApplication>
+#include <QResizeEvent>
 #include <QScreen>
 #include <QSlider>
+#include <QTabWidget>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QWindow>
 
 #include <algorithm>
 #include <array>
@@ -37,6 +42,18 @@ constexpr const char *filterName = "CCU OBS";
 constexpr const char *keys[] = {"red_gain",  "green_gain", "blue_gain",
                                 "brightness", "contrast",   "gamma_value",
                                 "saturation"};
+
+class PreviewShell final : public QFrame {
+public:
+  explicit PreviewShell(QWidget *parent = nullptr) : QFrame(parent) {
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  }
+};
+
+int previewShellHeightForWidth(int width) {
+  const int contentWidth = std::max(1, width - 6);
+  return static_cast<int>(std::lround(contentWidth * 9.0 / 16.0)) + 6;
+}
 
 struct SliderSpec {
   const char *label;
@@ -59,6 +76,66 @@ bool enumerateVideoSources(void *data, obs_source_t *source) {
   return true;
 }
 
+struct CapturedFrame {
+  std::vector<std::uint8_t> rgba;
+  std::uint32_t width = 0;
+  std::uint32_t height = 0;
+  std::uint32_t stride = 0;
+
+  bool valid() const { return !rgba.empty() && width && height && stride; }
+};
+
+CapturedFrame captureSourceFrame(obs_source_t *source,
+                                 std::uint32_t maximumWidth) {
+  CapturedFrame result;
+  if (!source)
+    return result;
+  const std::uint32_t sourceWidth = obs_source_get_width(source);
+  const std::uint32_t sourceHeight = obs_source_get_height(source);
+  if (!sourceWidth || !sourceHeight)
+    return result;
+
+  result.width = std::min(sourceWidth, maximumWidth);
+  result.height = std::max(
+      1u, static_cast<std::uint32_t>(std::lround(
+              result.width * (double(sourceHeight) / sourceWidth))));
+  result.stride = result.width * 4;
+
+  obs_enter_graphics();
+  gs_texrender_t *render = gs_texrender_create(GS_RGBA, GS_ZS_NONE);
+  gs_stagesurf_t *stage =
+      gs_stagesurface_create(result.width, result.height, GS_RGBA);
+  if (render && stage &&
+      gs_texrender_begin_with_color_space(render, result.width, result.height,
+                                          GS_CS_SRGB)) {
+    vec4 clear{};
+    gs_clear(GS_CLEAR_COLOR, &clear, 0.0f, 0);
+    gs_ortho(0.0f, static_cast<float>(sourceWidth), 0.0f,
+             static_cast<float>(sourceHeight), -100.0f, 100.0f);
+    gs_set_viewport(0, 0, result.width, result.height);
+    obs_source_video_render(source);
+    gs_texrender_end(render);
+    gs_stage_texture(stage, gs_texrender_get_texture(render));
+    gs_flush();
+
+    std::uint8_t *pixels = nullptr;
+    std::uint32_t sourceStride = 0;
+    if (gs_stagesurface_map(stage, &pixels, &sourceStride)) {
+      result.rgba.resize(result.stride * result.height);
+      for (std::uint32_t y = 0; y < result.height; ++y)
+        std::memcpy(result.rgba.data() + y * result.stride,
+                    pixels + y * sourceStride, result.stride);
+      gs_stagesurface_unmap(stage);
+    }
+  }
+  gs_stagesurface_destroy(stage);
+  gs_texrender_destroy(render);
+  obs_leave_graphics();
+  if (!result.valid())
+    return {};
+  return result;
+}
+
 double settingValue(int index, int sliderValue) {
   if (index == 3)
     return sliderValue / 100.0;
@@ -72,66 +149,34 @@ int sliderValue(int index, double value) {
 
 bool captureSample(obs_source_t *source, const QPointF &normalized,
                    std::array<double, 3> &rgb) {
-  if (!source)
+  const CapturedFrame frame = captureSourceFrame(source, 960);
+  if (!frame.valid())
     return false;
-  const uint32_t sourceWidth = obs_source_get_width(source);
-  const uint32_t sourceHeight = obs_source_get_height(source);
-  if (!sourceWidth || !sourceHeight)
-    return false;
-
-  const uint32_t width = std::min(sourceWidth, 960u);
-  const uint32_t height =
-      std::max(1u, static_cast<uint32_t>(
-                       std::lround(width * (double(sourceHeight) / sourceWidth))));
-  gs_texrender_t *render = nullptr;
-  gs_stagesurf_t *stage = nullptr;
-  bool success = false;
-  obs_enter_graphics();
-  render = gs_texrender_create(GS_RGBA, GS_ZS_NONE);
-  stage = gs_stagesurface_create(width, height, GS_RGBA);
-  if (render && stage &&
-      gs_texrender_begin_with_color_space(render, width, height, GS_CS_SRGB)) {
-    vec4 clear{};
-    gs_clear(GS_CLEAR_COLOR, &clear, 0.0f, 0);
-    gs_ortho(0.0f, static_cast<float>(sourceWidth), 0.0f,
-             static_cast<float>(sourceHeight), -100.0f, 100.0f);
-    gs_set_viewport(0, 0, width, height);
-    obs_source_video_render(source);
-    gs_texrender_end(render);
-    gs_stage_texture(stage, gs_texrender_get_texture(render));
-
-    uint8_t *pixels = nullptr;
-    uint32_t stride = 0;
-    if (gs_stagesurface_map(stage, &pixels, &stride)) {
-      const int centerX = std::clamp(
-          static_cast<int>(normalized.x() * (width - 1)), 0, int(width - 1));
-      const int centerY = std::clamp(
-          static_cast<int>(normalized.y() * (height - 1)), 0, int(height - 1));
-      double sums[3]{};
-      int count = 0;
-      for (int y = std::max(0, centerY - 3);
-           y <= std::min(int(height - 1), centerY + 3); ++y) {
-        for (int x = std::max(0, centerX - 3);
-             x <= std::min(int(width - 1), centerX + 3); ++x) {
-          const uint8_t *pixel = pixels + y * stride + x * 4;
-          sums[0] += pixel[0];
-          sums[1] += pixel[1];
-          sums[2] += pixel[2];
-          ++count;
-        }
-      }
-      if (count) {
-        for (int i = 0; i < 3; ++i)
-          rgb[i] = sums[i] / (255.0 * count);
-        success = true;
-      }
-      gs_stagesurface_unmap(stage);
+  const int centerX =
+      std::clamp(static_cast<int>(normalized.x() * (frame.width - 1)), 0,
+                 int(frame.width - 1));
+  const int centerY =
+      std::clamp(static_cast<int>(normalized.y() * (frame.height - 1)), 0,
+                 int(frame.height - 1));
+  double sums[3]{};
+  int count = 0;
+  for (int y = std::max(0, centerY - 3);
+       y <= std::min(int(frame.height - 1), centerY + 3); ++y) {
+    for (int x = std::max(0, centerX - 3);
+         x <= std::min(int(frame.width - 1), centerX + 3); ++x) {
+      const std::uint8_t *pixel =
+          frame.rgba.data() + y * frame.stride + x * 4;
+      sums[0] += pixel[0];
+      sums[1] += pixel[1];
+      sums[2] += pixel[2];
+      ++count;
     }
   }
-  gs_stagesurface_destroy(stage);
-  gs_texrender_destroy(render);
-  obs_leave_graphics();
-  return success;
+  if (!count)
+    return false;
+  for (int i = 0; i < 3; ++i)
+    rgb[i] = sums[i] / (255.0 * count);
+  return true;
 }
 } // namespace
 
@@ -140,23 +185,45 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
                  QString::fromLatin1(CCU_VERSION));
   setWindowFlag(Qt::Window, true);
   setModal(false);
-  auto *mainLayout = new QVBoxLayout(this);
-  auto *previews = new QHBoxLayout;
-  previews->setSpacing(8);
+
+  auto *mainLayout = new QHBoxLayout(this);
+  mainLayout->setSpacing(12);
+
+  leftPanel_ = new QWidget(this);
+  auto *leftPanel = leftPanel_;
+  auto *leftLayout = new QVBoxLayout(leftPanel);
+  leftLayout->setContentsMargins(0, 0, 0, 0);
+  leftLayout->setSpacing(8);
+  previewGrid_ = new QGridLayout;
+  previewGrid_->setContentsMargins(0, 0, 0, 0);
+  previewGrid_->setHorizontalSpacing(8);
+  previewGrid_->setVerticalSpacing(8);
+  previewGrid_->setColumnStretch(0, 1);
+  previewGrid_->setColumnStretch(1, 1);
+  previewGrid_->setRowStretch(0, 1);
+  previewGrid_->setRowStretch(1, 1);
+
   for (int i = 0; i < 4; ++i) {
     Channel &channel = channels_[i];
-    channel.frame = new QFrame(this);
-    channel.frame->setObjectName(QStringLiteral("channel%1").arg(i + 1));
+    channel.frame = new QFrame(leftPanel);
+    channel.frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     auto *layout = new QVBoxLayout(channel.frame);
-    layout->setContentsMargins(3, 3, 3, 3);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(4);
     channel.sourceBox = new QComboBox(channel.frame);
-    channel.preview = new ObsDisplayWidget(channel.frame);
+    channel.previewShell = new PreviewShell(channel.frame);
+    channel.previewShell->setObjectName(
+        QStringLiteral("previewShell%1").arg(i + 1));
+    auto *previewLayout = new QVBoxLayout(channel.previewShell);
+    previewLayout->setContentsMargins(3, 3, 3, 3);
+    channel.preview = new ObsDisplayWidget(channel.previewShell);
+    previewLayout->addWidget(channel.preview);
     auto *label = new QLabel(QStringLiteral("Càmera %1").arg(i + 1), channel.frame);
     label->setAlignment(Qt::AlignCenter);
     layout->addWidget(channel.sourceBox);
-    layout->addWidget(channel.preview, 1);
+    layout->addWidget(channel.previewShell);
     layout->addWidget(label);
-    previews->addWidget(channel.frame, 1);
+    previewGrid_->addWidget(channel.frame, i / 2, i % 2, Qt::AlignTop);
     connect(channel.sourceBox, &QComboBox::currentIndexChanged, this,
             [this, i](int) { chooseSource(i); });
     channel.preview->setClickHandler([this, i](const QPointF &position) {
@@ -166,7 +233,7 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
         selectChannel(i);
     });
   }
-  mainLayout->addLayout(previews, 1);
+  leftLayout->addLayout(previewGrid_, 1);
 
   auto *selectors = new QHBoxLayout;
   selectors->addStretch();
@@ -180,48 +247,98 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
             [this, i] { selectChannel(i); });
   }
   selectors->addStretch();
-  mainLayout->addLayout(selectors);
+  leftLayout->addLayout(selectors);
 
   auto *tools = new QHBoxLayout;
+  tools->addStretch();
   pickerButton_ = new QPushButton(QStringLiteral("⌖  Comptagotes"), this);
   pickerButton_->setCheckable(true);
   zoomButton_ = new QPushButton(QStringLiteral("🔍  Lupa"), this);
   zoomButton_->setCheckable(true);
   auto *reset = new QPushButton(QStringLiteral("Restablir"), this);
-  status_ = new QLabel(QStringLiteral("Selecciona una font per començar."), this);
   tools->addWidget(pickerButton_);
   tools->addWidget(zoomButton_);
   tools->addWidget(reset);
-  tools->addWidget(status_, 1);
-  mainLayout->addLayout(tools);
+  tools->addStretch();
+  leftLayout->addLayout(tools);
   connect(pickerButton_, &QPushButton::clicked, this, [this] { togglePicker(); });
   connect(zoomButton_, &QPushButton::clicked, this, [this] { toggleZoom(); });
   connect(reset, &QPushButton::clicked, this, [this] { resetControls(); });
 
-  auto *controls = new QGridLayout;
+  auto *rightPanel = new QFrame(this);
+  rightPanel->setFrameShape(QFrame::StyledPanel);
+  rightPanel->setMinimumWidth(330);
+  rightPanel->setMaximumWidth(520);
+  auto *rightLayout = new QVBoxLayout(rightPanel);
+  rightLayout->setContentsMargins(10, 10, 10, 10);
+  rightLayout->setSpacing(8);
+  status_ =
+      new QLabel(QStringLiteral("Selecciona una font per començar."), rightPanel);
+  status_->setWordWrap(true);
+  status_->setMinimumHeight(38);
+  rightLayout->addWidget(status_);
+
+  auto *scopeTabs = new QTabWidget(rightPanel);
+  histogram_ = new ScopeWidget(ScopeWidget::Type::Histogram, scopeTabs);
+  waveform_ = new ScopeWidget(ScopeWidget::Type::Waveform, scopeTabs);
+  vectorscope_ = new ScopeWidget(ScopeWidget::Type::Vectorscope, scopeTabs);
+  scopeTabs->addTab(histogram_, QStringLiteral("Histograma RGB"));
+  scopeTabs->addTab(waveform_, QStringLiteral("Waveform"));
+  scopeTabs->addTab(vectorscope_, QStringLiteral("Vectorscopi"));
+  rightLayout->addWidget(scopeTabs, 1);
+
+  auto *generalGroup =
+      new QGroupBox(QStringLiteral("Nivells"), rightPanel);
+  auto *generalControls = new QGridLayout(generalGroup);
+  auto *rgbGroup = new QGroupBox(QStringLiteral("Nivells RGB"), rightPanel);
+  auto *rgbControls = new QGridLayout(rgbGroup);
+
   QSlider **sliders[] = {&red_, &green_, &blue_, &brightness_,
                          &contrast_, &gamma_, &saturation_};
-  for (int i = 0; i < 7; ++i) {
-    auto *label = new QLabel(QString::fromUtf8(specs[i].label), this);
-    *sliders[i] = new QSlider(Qt::Horizontal, this);
-    (*sliders[i])->setRange(specs[i].minimum, specs[i].maximum);
-    (*sliders[i])->setValue(specs[i].neutral);
-    auto *value = new QLabel(this);
+  auto addControl = [&](QGridLayout *layout, int row, int index) {
+    auto *label =
+        new QLabel(QString::fromUtf8(specs[index].label), layout->parentWidget());
+    *sliders[index] =
+        new QSlider(Qt::Horizontal, layout->parentWidget());
+    (*sliders[index])->setRange(specs[index].minimum, specs[index].maximum);
+    (*sliders[index])->setValue(specs[index].neutral);
+    auto *value = new QLabel(layout->parentWidget());
     value->setMinimumWidth(48);
-    controls->addWidget(label, i / 2, (i % 2) * 3);
-    controls->addWidget(*sliders[i], i / 2, (i % 2) * 3 + 1);
-    controls->addWidget(value, i / 2, (i % 2) * 3 + 2);
-    connect(*sliders[i], &QSlider::valueChanged, this,
-            [this, value, i](int number) {
-              value->setText(QString::number(settingValue(i, number), 'f', 2));
+    value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    layout->addWidget(label, row, 0);
+    layout->addWidget(*sliders[index], row, 1);
+    layout->addWidget(value, row, 2);
+    layout->setColumnStretch(1, 1);
+    connect(*sliders[index], &QSlider::valueChanged, this,
+            [this, value, index](int number) {
+              value->setText(
+                  QString::number(settingValue(index, number), 'f', 2));
               applyControls();
             });
-    value->setText(QString::number(settingValue(i, specs[i].neutral), 'f', 2));
-  }
-  mainLayout->addLayout(controls);
+    value->setText(
+        QString::number(settingValue(index, specs[index].neutral), 'f', 2));
+  };
+  addControl(generalControls, 0, 3);
+  addControl(generalControls, 1, 4);
+  addControl(generalControls, 2, 5);
+  addControl(generalControls, 3, 6);
+  addControl(rgbControls, 0, 0);
+  addControl(rgbControls, 1, 1);
+  addControl(rgbControls, 2, 2);
+  rightLayout->addWidget(generalGroup);
+  rightLayout->addWidget(rgbGroup);
+
+  mainLayout->addWidget(leftPanel, 3);
+  mainLayout->addWidget(rightPanel, 1);
+
   refreshSources();
   loadAssignments();
   selectChannel(0);
+
+  scopeTimer_ = new QTimer(this);
+  scopeTimer_->setInterval(125);
+  connect(scopeTimer_, &QTimer::timeout, this, [this] { updateScopes(); });
+  scopeTimer_->start();
 
   QTimer::singleShot(0, this, [this] {
     QScreen *targetScreen = nullptr;
@@ -271,14 +388,17 @@ void CcuWindow::selectChannel(int index) {
   for (int i = 0; i < 4; ++i) {
     const bool active = i == selected_;
     selectButtons_[i]->setChecked(active);
-    channels_[i].frame->setStyleSheet(
-        active ? QStringLiteral("QFrame#channel%1 { border: 3px solid #e6b422; }")
-                     .arg(i + 1)
-               : QString());
+    channels_[i].previewShell->setStyleSheet(
+        active
+            ? QStringLiteral(
+                  "QFrame#previewShell%1 { border: 3px solid #e6b422; }")
+                  .arg(i + 1)
+            : QStringLiteral(
+                  "QFrame#previewShell%1 { border: 3px solid transparent; }")
+                  .arg(i + 1));
   }
   if (zoomed_)
-    for (int i = 0; i < 4; ++i)
-      channels_[i].frame->setVisible(i == selected_);
+    relayoutChannels();
   updateSelectedUi();
 }
 
@@ -376,10 +496,69 @@ void CcuWindow::togglePicker() {
 
 void CcuWindow::toggleZoom() {
   zoomed_ = zoomButton_->isChecked();
-  for (int i = 0; i < 4; ++i)
-    channels_[i].frame->setVisible(!zoomed_ || i == selected_);
+  relayoutChannels();
   status_->setText(zoomed_ ? QStringLiteral("Vista ampliada de la càmera activa.")
                            : QStringLiteral("Vista de quatre càmeres."));
+}
+
+void CcuWindow::relayoutChannels() {
+  if (!previewGrid_)
+    return;
+  if (zoomed_) {
+    for (int i = 0; i < 4; ++i)
+      channels_[i].frame->setVisible(i == selected_);
+    previewGrid_->addWidget(channels_[selected_].frame, 0, 0, 2, 2,
+                            Qt::AlignTop);
+  } else {
+    for (int i = 0; i < 4; ++i) {
+      previewGrid_->addWidget(channels_[i].frame, i / 2, i % 2, Qt::AlignTop);
+      channels_[i].frame->setVisible(true);
+    }
+  }
+  updatePreviewSizes();
+}
+
+void CcuWindow::updatePreviewSizes() {
+  if (!leftPanel_ || !previewGrid_)
+    return;
+  // QGridLayout doesn't reliably honor heightForWidth, so the 16:9 preview
+  // aspect ratio is driven explicitly from the actual column width instead
+  // of letting each shell fight the layout reactively in its own
+  // resizeEvent (that caused the preview to render at a stale, mismatched
+  // size).
+  const int totalWidth = leftPanel_->width();
+  const int spacing = previewGrid_->horizontalSpacing();
+  const int width =
+      zoomed_ ? totalWidth : std::max(1, (totalWidth - spacing) / 2);
+  const int height = previewShellHeightForWidth(width);
+  for (Channel &channel : channels_)
+    channel.previewShell->setFixedHeight(height);
+}
+
+void CcuWindow::resizeEvent(QResizeEvent *event) {
+  QDialog::resizeEvent(event);
+  updatePreviewSizes();
+}
+
+void CcuWindow::updateScopes() {
+  if (!isVisible() || pickerActive_)
+    return;
+  obs_source_t *source = channels_[selected_].source;
+  if (!source) {
+    histogram_->clear();
+    waveform_->clear();
+    vectorscope_->clear();
+    return;
+  }
+  const CapturedFrame frame = captureSourceFrame(source, 480);
+  if (!frame.valid())
+    return;
+  const ScopeData scope =
+      analyzeScopeFrame(frame.rgba.data(), frame.width, frame.height,
+                        frame.stride);
+  histogram_->setScopeData(scope);
+  waveform_->setScopeData(scope);
+  vectorscope_->setScopeData(scope);
 }
 
 void CcuWindow::sampleWhite(int channelIndex, const QPointF &normalized) {
@@ -459,6 +638,18 @@ void showCcuWindow() {
   activeWindow->show();
   activeWindow->raise();
   activeWindow->activateWindow();
+  // On macOS in particular, raising/activating right after show() can be a
+  // no-op if the native window isn't fully mapped yet, leaving the dialog
+  // stuck behind OBS's main window. Repeating it on the next event loop
+  // turn, once the window is actually up, makes it reliable.
+  QTimer::singleShot(0, activeWindow, [] {
+    if (!activeWindow)
+      return;
+    activeWindow->raise();
+    activeWindow->activateWindow();
+    if (QWindow *handle = activeWindow->windowHandle())
+      handle->requestActivate();
+  });
 }
 
 void closeCcuWindow() {
