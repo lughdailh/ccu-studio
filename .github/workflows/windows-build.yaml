@@ -92,12 +92,17 @@ jobs:
           $obsSrc = ".deps/obs-studio-$env:OBS_VERSION"
           $libobsDir = (Resolve-Path "$obsSrc/build_x64/libobs").Path
           $frontendApiDir = (Resolve-Path "$obsSrc/build_x64/frontend/api").Path
+          $depsPrefix = (Resolve-Path ".deps/obs-deps-x64").Path
           $qt6Prefix = (Resolve-Path ".deps/obs-deps-qt6-x64").Path
 
+          # libobsConfig.cmake pulls in transitive deps (e.g. w32-pthreads)
+          # from the general obs-deps package via find_dependency(), so it
+          # must be on the prefix path here too, not just when building
+          # obs-studio itself.
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
             "-Dlibobs_DIR=$libobsDir" `
             "-Dobs-frontend-api_DIR=$frontendApiDir" `
-            "-DCMAKE_PREFIX_PATH=$qt6Prefix"
+            "-DCMAKE_PREFIX_PATH=$depsPrefix;$qt6Prefix"
           if ($LASTEXITCODE -ne 0) { throw "CCU OBS configure failed" }
 
       - name: Build CCU OBS
