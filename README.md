@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="material/logo_ccu.png" alt="Logo de CCU OBS" width="200">
+</p>
+
 # CCU OBS
 
 Plugin de control de càmeres per a OBS Studio. Reuneix fins a quatre fonts de
