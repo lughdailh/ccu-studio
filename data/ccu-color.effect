@@ -1,0 +1,50 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float red_gain = 1.0;
+uniform float green_gain = 1.0;
+uniform float blue_gain = 1.0;
+uniform float brightness = 0.0;
+uniform float contrast = 1.0;
+uniform float gamma_value = 1.0;
+uniform float saturation = 1.0;
+
+sampler_state linearSampler {
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
+struct VertData {
+    float4 pos : POSITION;
+    float2 uv : TEXCOORD0;
+};
+
+VertData VSDefault(VertData input_data)
+{
+    VertData output_data;
+    output_data.pos = mul(float4(input_data.pos.xyz, 1.0), ViewProj);
+    output_data.uv = input_data.uv;
+    return output_data;
+}
+
+float4 PSCCU(VertData input_data) : TARGET
+{
+    float4 color = image.Sample(linearSampler, input_data.uv);
+    color.rgb *= float3(red_gain, green_gain, blue_gain);
+    color.rgb = (color.rgb - 0.5) * contrast + 0.5 + brightness;
+    float inverse_gamma = 1.0 / gamma_value;
+    color.rgb = pow(max(color.rgb, 0.00001),
+                    float3(inverse_gamma, inverse_gamma, inverse_gamma));
+    float luminance = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
+    color.rgb = lerp(float3(luminance, luminance, luminance), color.rgb, saturation);
+    return saturate(color);
+}
+
+technique Draw
+{
+    pass
+    {
+        vertex_shader = VSDefault(input_data);
+        pixel_shader = PSCCU(input_data);
+    }
+}
