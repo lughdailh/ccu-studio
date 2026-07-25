@@ -46,16 +46,20 @@ else()
   message(FATAL_ERROR "The first CCU build supports macOS and Windows")
 endif()
 
-add_custom_command(TARGET obs-ccu POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources"
-  COMMAND ${CMAKE_COMMAND} -E copy
-          "${CMAKE_CURRENT_SOURCE_DIR}/data/ccu-color.effect"
-          "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/ccu-color.effect"
-  COMMAND ${CMAKE_COMMAND} -E copy_directory
-          "${CMAKE_CURRENT_SOURCE_DIR}/data/locale"
-          "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/locale"
-  VERBATIM
-)
+if(APPLE)
+  # $<TARGET_BUNDLE_CONTENT_DIR:...> is only meaningful for a BUNDLE target;
+  # on Windows the data files are staged by the packaging step instead.
+  add_custom_command(TARGET obs-ccu POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_SOURCE_DIR}/data/ccu-color.effect"
+            "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/ccu-color.effect"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/data/locale"
+            "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/locale"
+    VERBATIM
+  )
+endif()
 
 include(CTest)
 if(BUILD_TESTING)

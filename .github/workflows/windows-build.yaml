@@ -1,0 +1,169 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  OBS_VERSION: "31.1.1"
+  OBS_DEPS_VERSION: "2025-07-11"
+
+jobs:
+  build-windows:
+    name: Build for Windows (x64)
+    runs-on: windows-2022
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read plugin version
+        id: version
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $match = Select-String -Path CMakeLists.txt -Pattern 'project\(obs-ccu VERSION ([0-9.]+)'
+          if (-not $match) { throw "Could not find project version in CMakeLists.txt" }
+          $projectVersion = $match.Matches[0].Groups[1].Value
+          "version=$projectVersion" >> $env:GITHUB_OUTPUT
+          Write-Host "Plugin version: $projectVersion"
+
+      # Same obs-studio / obs-deps versions already validated locally for the
+      # macOS build (see CMakeCache.txt libobs_DIR / Qt6_DIR), so libobs,
+      # obs-frontend-api and Qt6 are known-compatible with this plugin.
+      - name: Cache OBS Studio dependencies
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: .deps
+          key: windows-obs-deps-${{ env.OBS_VERSION }}-${{ env.OBS_DEPS_VERSION }}-v1
+
+      - name: Download OBS Studio build dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path .deps | Out-Null
+
+          $depsUrl = "https://github.com/obsproject/obs-deps/releases/download/$env:OBS_DEPS_VERSION/windows-deps-$env:OBS_DEPS_VERSION-x64.zip"
+          $qt6Url = "https://github.com/obsproject/obs-deps/releases/download/$env:OBS_DEPS_VERSION/windows-deps-qt6-$env:OBS_DEPS_VERSION-x64.zip"
+          $obsUrl = "https://github.com/obsproject/obs-studio/archive/refs/tags/$env:OBS_VERSION.zip"
+
+          Write-Host "Downloading obs-deps..."
+          Invoke-WebRequest -Uri $depsUrl -OutFile ".deps/obs-deps.zip"
+          Expand-Archive -Path ".deps/obs-deps.zip" -DestinationPath ".deps/obs-deps-x64" -Force
+
+          Write-Host "Downloading obs-deps Qt6..."
+          Invoke-WebRequest -Uri $qt6Url -OutFile ".deps/obs-deps-qt6.zip"
+          Expand-Archive -Path ".deps/obs-deps-qt6.zip" -DestinationPath ".deps/obs-deps-qt6-x64" -Force
+
+          Write-Host "Downloading obs-studio source..."
+          Invoke-WebRequest -Uri $obsUrl -OutFile ".deps/obs-studio.zip"
+          Expand-Archive -Path ".deps/obs-studio.zip" -DestinationPath ".deps" -Force
+
+          Remove-Item ".deps/obs-deps.zip", ".deps/obs-deps-qt6.zip", ".deps/obs-studio.zip"
+
+      - name: Build libobs and obs-frontend-api
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $obsSrc = ".deps/obs-studio-$env:OBS_VERSION"
+          $obsBuild = "$obsSrc/build_x64"
+          $prefixPath = (Resolve-Path ".deps/obs-deps-x64").Path + ";" + (Resolve-Path ".deps/obs-deps-qt6-x64").Path
+
+          Write-Host "Configuring obs-studio (libobs + obs-frontend-api only)..."
+          cmake -S $obsSrc -B $obsBuild -G "Visual Studio 17 2022" -A x64 `
+            "-DCMAKE_PREFIX_PATH=$prefixPath" `
+            -DENABLE_PLUGINS=OFF -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_HEVC=OFF `
+            "-DOBS_VERSION_OVERRIDE=$env:OBS_VERSION"
+          if ($LASTEXITCODE -ne 0) { throw "obs-studio configure failed" }
+
+          Write-Host "Building obs-frontend-api (Release)..."
+          cmake --build $obsBuild --target obs-frontend-api --config Release --parallel
+          if ($LASTEXITCODE -ne 0) { throw "obs-frontend-api build failed" }
+
+      - name: Configure CCU OBS
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $obsSrc = ".deps/obs-studio-$env:OBS_VERSION"
+          $libobsDir = (Resolve-Path "$obsSrc/build_x64/libobs").Path
+          $frontendApiDir = (Resolve-Path "$obsSrc/build_x64/frontend/api").Path
+          $qt6Prefix = (Resolve-Path ".deps/obs-deps-qt6-x64").Path
+
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+            "-Dlibobs_DIR=$libobsDir" `
+            "-Dobs-frontend-api_DIR=$frontendApiDir" `
+            "-DCMAKE_PREFIX_PATH=$qt6Prefix"
+          if ($LASTEXITCODE -ne 0) { throw "CCU OBS configure failed" }
+
+      - name: Build CCU OBS
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake --build build --config Release --target obs-ccu
+          if ($LASTEXITCODE -ne 0) { throw "CCU OBS build failed" }
+
+      - name: Run tests
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ctest --test-dir build --build-config Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw "Tests failed" }
+
+      - name: Package plugin
+        id: package
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = "${{ steps.version.outputs.version }}"
+          $stageDir = "dist/obs-ccu"
+
+          New-Item -ItemType Directory -Force -Path "$stageDir/bin/64bit" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$stageDir/data/locale" | Out-Null
+
+          Copy-Item "build/Release/obs-ccu.dll" "$stageDir/bin/64bit/obs-ccu.dll"
+          Copy-Item "data/ccu-color.effect" "$stageDir/data/ccu-color.effect"
+          Copy-Item "data/locale/*.ini" "$stageDir/data/locale/"
+
+          $zipName = "obs-ccu-$version-windows-x64.zip"
+          Compress-Archive -Path $stageDir -DestinationPath "dist/$zipName" -Force
+
+          "zipName=$zipName" >> $env:GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.zipName }}
+          path: dist/${{ steps.package.outputs.zipName }}
+
+  release:
+    name: Publish Windows release
+    needs: build-windows
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: obs-ccu-${{ needs.build-windows.outputs.version }}-windows-x64.zip
+          path: dist
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          zip="dist/obs-ccu-${{ needs.build-windows.outputs.version }}-windows-x64.zip"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$zip" --clobber
+          else
+            gh release create "$tag" "$zip" \
+              --title "CCU OBS $tag" \
+              --notes "Compilació automàtica per a Windows x64. Descomprimeix la carpeta \`obs-ccu\` dins de %APPDATA%\\obs-studio\\plugins\\."
+          fi
