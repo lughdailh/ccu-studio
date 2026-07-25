@@ -111,7 +111,7 @@ jobs:
       - name: Build CCU OBS
         run: |
           $ErrorActionPreference = 'Stop'
-          cmake --build build --config Release --target obs-ccu
+          cmake --build build --config Release --target obs-ccu scope-data-tests
           if ($LASTEXITCODE -ne 0) { throw "CCU OBS build failed" }
 
       - name: Run tests
