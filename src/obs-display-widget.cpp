@@ -8,6 +8,9 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
+// Without NOMINMAX, windows.h's min/max macros mangle every std::max/
+// std::clamp call in this file at the preprocessor level (MSVC C2589/C2059).
+#define NOMINMAX
 #include <windows.h>
 #endif
 
