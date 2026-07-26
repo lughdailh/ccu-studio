@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(obs-ccu VERSION 0.2.5 LANGUAGES CXX)
+project(obs-ccu VERSION 0.2.6 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -34,6 +34,9 @@ target_link_libraries(obs-ccu PRIVATE OBS::libobs OBS::obs-frontend-api Qt6::Wid
 target_compile_definitions(obs-ccu PRIVATE CCU_VERSION="${PROJECT_VERSION}")
 
 if(APPLE)
+  target_sources(obs-ccu PRIVATE src/ccu-window-mac.mm src/ccu-window-mac.hpp)
+  set_source_files_properties(src/ccu-window-mac.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+  target_link_libraries(obs-ccu PRIVATE "-framework AppKit")
   set_target_properties(obs-ccu PROPERTIES
     BUNDLE TRUE
     BUNDLE_EXTENSION plugin

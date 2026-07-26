@@ -29,6 +29,10 @@
 #include <QVBoxLayout>
 #include <QWindow>
 
+#ifdef __APPLE__
+#include "ccu-window-mac.hpp"
+#endif
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -691,6 +695,14 @@ void showCcuWindow() {
   activeWindow->show();
   activeWindow->raise();
   activeWindow->activateWindow();
+#ifdef __APPLE__
+  // Qt's raise()/activateWindow() go through its own activation
+  // abstraction, which on macOS can be a no-op while OBS's own window
+  // still holds focus - the dialog would show() but stay stuck behind
+  // OBS's main window with no obvious way to bring it forward again.
+  // Cocoa's own activation call actually steals focus.
+  ccuActivateWindowMac(reinterpret_cast<void *>(activeWindow->winId()));
+#endif
   // On macOS in particular, raising/activating right after show() can be a
   // no-op if the native window isn't fully mapped yet, leaving the dialog
   // stuck behind OBS's main window. Repeating it on the next event loop
@@ -702,6 +714,9 @@ void showCcuWindow() {
     activeWindow->activateWindow();
     if (QWindow *handle = activeWindow->windowHandle())
       handle->requestActivate();
+#ifdef __APPLE__
+    ccuActivateWindowMac(reinterpret_cast<void *>(activeWindow->winId()));
+#endif
   });
 }
 
