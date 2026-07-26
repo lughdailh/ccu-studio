@@ -228,11 +228,12 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
     layout->addWidget(channel.sourceBox);
     layout->addWidget(channel.previewShell);
     layout->addWidget(label);
-    // No Qt::AlignTop here: that would force the widget to its sizeHint
-    // and pin it to the top of its cell regardless of size policy, which
-    // would stop the zoomed shell (Expanding policy, set dynamically in
-    // updatePreviewSizes) from ever actually growing into its cell.
-    previewGrid_->addWidget(channel.frame, i / 2, i % 2);
+    // Qt::AlignTop here keeps a Fixed-policy frame pinned to the top of
+    // its cell instead of centered in any stretch-allocated leftover
+    // space. relayoutChannels() clears it (via setAlignment, without
+    // re-adding) just for the zoomed cell, which needs to actually fill
+    // its cell rather than stay pinned to its small sizeHint.
+    previewGrid_->addWidget(channel.frame, i / 2, i % 2, Qt::AlignTop);
     connect(channel.sourceBox, &QComboBox::currentIndexChanged, this,
             [this, i](int) { chooseSource(i); });
     channel.preview->setClickHandler([this, i](const QPointF &position) {
@@ -535,6 +536,10 @@ void CcuWindow::relayoutChannels() {
     channels_[i].frame->setSizePolicy(
         QSizePolicy::Expanding,
         isSelectedAndZoomed ? QSizePolicy::Expanding : QSizePolicy::Fixed);
+    // AlignTop for everything except the zoomed cell, which needs to
+    // actually fill its cell instead of staying pinned to its sizeHint.
+    previewGrid_->setAlignment(channels_[i].frame,
+                               isSelectedAndZoomed ? Qt::Alignment() : Qt::AlignTop);
     channels_[i].frame->setVisible(!zoomed_ || i == selected_);
   }
   const int selectedRow = selected_ / 2;
