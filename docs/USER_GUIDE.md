@@ -9,31 +9,31 @@
 
 ## Instal·lació a macOS
 
-Tanca OBS i copia `obs-ccu.plugin` a:
+Tanca OBS i copia `ccu-studio.plugin` a:
 
 ```text
-~/Library/Application Support/obs-studio/plugins/obs-ccu.plugin
+~/Library/Application Support/obs-studio/plugins/ccu-studio.plugin
 ```
 
 Torna a obrir OBS. El registre ha d'incloure:
 
 ```text
-[CCU Studio] Loaded version 0.3.1
+[CCU Studio] Loaded version 0.3.2
 ```
 
 ## Instal·lació a Windows
 
 1. Tanca completament OBS.
-2. Descomprimeix el paquet `ccu-studio-0.3.1-windows-x64.zip`.
-3. Copia la carpeta `obs-ccu` sencera a:
+2. Descomprimeix el paquet `ccu-studio-0.3.2-windows-x64.zip`.
+3. Copia la carpeta `ccu-studio` sencera a:
 
 ```text
 %APPDATA%\obs-studio\plugins\
 ```
 
 El resultat ha de contenir
-`%APPDATA%\obs-studio\plugins\obs-ccu\bin\64bit\obs-ccu.dll` i
-`%APPDATA%\obs-studio\plugins\obs-ccu\data\`.
+`%APPDATA%\obs-studio\plugins\ccu-studio\bin\64bit\ccu-studio.dll` i
+`%APPDATA%\obs-studio\plugins\ccu-studio\data\`.
 Torna a obrir OBS i busca `CCU Studio` al menú **Eines**.
 
 ## Obrir i assignar càmeres
@@ -121,11 +121,11 @@ El plugin no modifica altres filtres de color creats per l'usuari.
 
 ### No apareix al menú Eines
 
-Comprova la ruta del bundle i busca `obs-ccu` al registre d'OBS.
+Comprova la ruta del bundle i busca `ccu-studio` al registre d'OBS.
 
 ### Els controls es mouen però la imatge no canvia
 
-Confirma que el títol mostra 0.3.1 o posterior i que la font conté el filtre
+Confirma que el títol mostra 0.3.2 o posterior i que la font conté el filtre
 `CCU Studio` (o `CCU OBS` si prové d'una versió anterior). Reinicia OBS després
 de substituir un bundle.
 
@@ -152,3 +152,9 @@ CCU Studio es distribueix sota `GPL-2.0-or-later`. El desenvolupament ha
 comptat principalment amb l'assistència d'OpenAI Codex/ChatGPT i Claude, sota
 direcció, proves i revisió humanes. Aquesta menció no implica afiliació ni
 aval d'OpenAI o Anthropic.
+
+Un projecte de **Lluís Bartra Homedes** per a **Moiz i Bartra Produccions,
+SL** i **El Català Emprenyat** ([emprenyat.cat](https://emprenyat.cat)).
+Software ideat i creat íntegrament a Catalunya.
+
+Web del projecte: [emprenyat.cat/obs/CCUstudio](https://emprenyat.cat/obs/CCUstudio)

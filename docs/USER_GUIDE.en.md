@@ -9,7 +9,7 @@
 
 ## Install on macOS
 
-Close OBS, unzip the macOS package and copy `obs-ccu.plugin` to:
+Close OBS, unzip the macOS package and copy `ccu-studio.plugin` to:
 
 ```text
 ~/Library/Application Support/obs-studio/plugins/
@@ -20,15 +20,15 @@ Reopen OBS and look for `CCU Studio` under **Tools**.
 ## Install on Windows
 
 1. Close OBS completely.
-2. Unzip `ccu-studio-0.3.1-windows-x64.zip`.
-3. Copy the complete `obs-ccu` folder to:
+2. Unzip `ccu-studio-0.3.2-windows-x64.zip`.
+3. Copy the complete `ccu-studio` folder to:
 
 ```text
 %APPDATA%\obs-studio\plugins\
 ```
 
 The resulting path must contain
-`obs-ccu\bin\64bit\obs-ccu.dll` and `obs-ccu\data\`.
+`ccu-studio\bin\64bit\ccu-studio.dll` and `ccu-studio\data\`.
 Reopen OBS and look for `CCU Studio` under **Tools**.
 
 ## Assign sources
@@ -112,3 +112,9 @@ CCU Studio is distributed under `GPL-2.0-or-later`. Development was assisted
 primarily by OpenAI Codex/ChatGPT and Claude, under human direction, testing,
 and review. This acknowledgement does not imply affiliation with or
 endorsement by OpenAI or Anthropic.
+
+A project by **Lluís Bartra Homedes** for **Moiz i Bartra Produccions, SL**
+and **El Català Emprenyat** ([emprenyat.cat](https://emprenyat.cat)).
+Software conceived and created entirely in Catalonia.
+
+Project website: [emprenyat.cat/obs/CCUstudio](https://emprenyat.cat/obs/CCUstudio)

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(obs-ccu VERSION 0.3.1 LANGUAGES CXX)
+project(obs-ccu VERSION 0.3.2 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -41,10 +41,10 @@ if(APPLE)
     BUNDLE TRUE
     BUNDLE_EXTENSION plugin
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/packaging/Info.plist.in"
-    OUTPUT_NAME "obs-ccu"
+    OUTPUT_NAME "ccu-studio"
   )
 elseif(WIN32)
-  set_target_properties(obs-ccu PROPERTIES PREFIX "" OUTPUT_NAME "obs-ccu")
+  set_target_properties(obs-ccu PROPERTIES PREFIX "" OUTPUT_NAME "ccu-studio")
 else()
   message(FATAL_ERROR "The first CCU build supports macOS and Windows")
 endif()
@@ -92,7 +92,7 @@ if(BUILD_TESTING AND APPLE)
   add_test(NAME plugin-smoke
     COMMAND plugin-smoke
       "/Applications/OBS.app/Contents/Frameworks/libobs-opengl.dylib"
-      "$<TARGET_BUNDLE_DIR:obs-ccu>/Contents/MacOS/obs-ccu"
+      "$<TARGET_BUNDLE_DIR:obs-ccu>/Contents/MacOS/ccu-studio"
       "$<TARGET_BUNDLE_DIR:obs-ccu>/Contents/Resources")
   set_tests_properties(plugin-smoke PROPERTIES
     ENVIRONMENT

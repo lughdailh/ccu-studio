@@ -4,8 +4,8 @@
 <dict>
   <key>CFBundleDevelopmentRegion</key><string>ca</string>
   <key>CFBundleDisplayName</key><string>CCU Studio</string>
-  <key>CFBundleExecutable</key><string>obs-ccu</string>
-  <key>CFBundleIdentifier</key><string>com.lughdailh.obs-ccu</string>
+  <key>CFBundleExecutable</key><string>ccu-studio</string>
+  <key>CFBundleIdentifier</key><string>cat.emprenyat.ccu-studio</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>CCU Studio</string>
   <key>CFBundlePackageType</key><string>BNDL</string>

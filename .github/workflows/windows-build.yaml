@@ -127,13 +127,13 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $version = "${{ steps.version.outputs.version }}"
-          $stageDir = "dist/obs-ccu"
+          $stageDir = "dist/ccu-studio"
 
           New-Item -ItemType Directory -Force -Path "$stageDir/bin/64bit" | Out-Null
           New-Item -ItemType Directory -Force -Path "$stageDir/data/locale" | Out-Null
           New-Item -ItemType Directory -Force -Path "$stageDir/data/icons" | Out-Null
 
-          Copy-Item "build/Release/obs-ccu.dll" "$stageDir/bin/64bit/obs-ccu.dll"
+          Copy-Item "build/Release/ccu-studio.dll" "$stageDir/bin/64bit/ccu-studio.dll"
           Copy-Item "data/ccu-color.effect" "$stageDir/data/ccu-color.effect"
           Copy-Item "data/ccu-compare.effect" "$stageDir/data/ccu-compare.effect"
           Copy-Item "data/locale/*.ini" "$stageDir/data/locale/"
@@ -180,5 +180,5 @@ jobs:
           else
             gh release create "$tag" "$zip" \
               --title "CCU Studio $tag" \
-              --notes "Compilació automàtica per a Windows x64. Descomprimeix la carpeta \`obs-ccu\` dins de %APPDATA%\\obs-studio\\plugins\\."
+              --notes "Compilació automàtica per a Windows x64. Descomprimeix la carpeta \`ccu-studio\` dins de %APPDATA%\\obs-studio\\plugins\\."
           fi

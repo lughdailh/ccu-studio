@@ -8,7 +8,7 @@
 - Qt 6 Widgets.
 - Xcode per a macOS.
 
-La versió 0.3.1 utilitza dependències universals d'OBS 31.1.1 i es valida en
+La versió 0.3.2 utilitza dependències universals d'OBS 31.1.1 i es valida en
 temps d'execució amb OBS 32.2.
 
 ## Compilació macOS universal
@@ -41,9 +41,9 @@ OpenGL rebutjava una expressió del shader.
 ## Signatura local
 
 ```sh
-xattr -cr build-universal/obs-ccu.plugin
-codesign --force --deep --sign - build-universal/obs-ccu.plugin
-codesign --verify --deep --strict build-universal/obs-ccu.plugin
+xattr -cr build-universal/ccu-studio.plugin
+codesign --force --deep --sign - build-universal/ccu-studio.plugin
+codesign --verify --deep --strict build-universal/ccu-studio.plugin
 ```
 
 És una signatura ad hoc. Una distribució pública requeriria Developer ID,
@@ -52,7 +52,7 @@ notarització i un instal·lador.
 ## Instal·lació
 
 ```text
-~/Library/Application Support/obs-studio/plugins/obs-ccu.plugin
+~/Library/Application Support/obs-studio/plugins/ccu-studio.plugin
 ```
 
 Tanca completament OBS abans de substituir el bundle.
@@ -66,8 +66,8 @@ els tags `vX.Y.Z` creen o actualitzen una GitHub Release.
 El ZIP de Windows conté:
 
 ```text
-obs-ccu/
-  bin/64bit/obs-ccu.dll
+ccu-studio/
+  bin/64bit/ccu-studio.dll
   data/ccu-color.effect
   data/ccu-compare.effect
   data/icons/

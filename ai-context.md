@@ -3,7 +3,7 @@
 ## Estat actual
 
 - Projecte privat en procés de canvi de nom a `lughdailh/ccu-studio`.
-- Versió en desenvolupament: **0.3.1**.
+- Versió en desenvolupament: **0.3.2**.
 - Plugin natiu d’OBS, Qt 6 + libobs, compatible amb macOS i Windows x64.
 - OBS de referència: 32.2; SDK/dependències de compilació: OBS 31.1.1.
 - Finestra no modal oberta des de **Eines → CCU Studio…**.
@@ -62,10 +62,11 @@ ctest --test-dir build-release --output-on-failure
 - `scope-data-tests`: proves dels instruments.
 - `plugin-smoke` (macOS): càrrega real del mòdul i shader.
 - macOS distribuït com a bundle universal arm64+x86_64 amb signatura ad hoc.
+- macOS empaquetat com `ccu-studio.plugin`, executable `ccu-studio`.
 - Windows empaquetat com
-  `obs-ccu/bin/64bit/obs-ccu.dll` + `obs-ccu/data/`.
-- Els identificadors tècnics `obs-ccu` i `ccu_obs_color_filter` es conserven
-  per compatibilitat; el nom públic i els assets de Release són CCU Studio.
+  `ccu-studio/bin/64bit/ccu-studio.dll` + `ccu-studio/data/`.
+- L'identificador intern `ccu_obs_color_filter` es conserva per compatibilitat
+  amb les escenes; els noms físics distribuïts són CCU Studio.
 
 ## Decisions i límits importants
 
@@ -83,6 +84,10 @@ ctest --test-dir build-release --output-on-failure
 - El projecte acredita l'assistència principal d'OpenAI Codex/ChatGPT i
   Claude, sota direcció i revisió humanes.
 - Donacions: `https://www.paypal.com/ncp/payment/PLB-LY4PW9EJNVML`.
+- Autoria: Lluís Bartra Homedes per a Moiz i Bartra Produccions, SL i
+  El Català Emprenyat (`https://emprenyat.cat`).
+- Web oficial: `https://emprenyat.cat/obs/CCUstudio`.
+- Software ideat i creat íntegrament a Catalunya.
 
 ## Publicació 0.3.0 completada (històric)
 

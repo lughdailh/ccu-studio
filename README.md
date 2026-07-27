@@ -4,9 +4,9 @@ Plugin de control de càmeres per a OBS Studio. Reuneix fins a quatre fonts de
 vídeo en una finestra CCU, permet comparar-les simultàniament i aplica
 correccions persistents a la font original.
 
-La versió actual és **0.3.1** i està orientada a proves en macOS i Windows.
+La versió actual és **0.3.2** i està orientada a proves en macOS i Windows.
 
-![CCU Studio 0.3.1 amb previsualitzacions, vectorscopi i controls](docs/images/ccu-studio-0.3.1.png)
+![CCU Studio amb previsualitzacions, vectorscopi i controls](docs/images/ccu-studio-0.3.1.png)
 
 ## Funcions actuals
 
@@ -54,6 +54,8 @@ gravació i emissió.
   [English release notes](docs/RELEASE_NOTES_0.3.0.en.md)
 - [Notes de la versió 0.3.1](docs/RELEASE_NOTES_0.3.1.md) ·
   [English release notes](docs/RELEASE_NOTES_0.3.1.en.md)
+- [Notes de la versió 0.3.2](docs/RELEASE_NOTES_0.3.2.md) ·
+  [English release notes](docs/RELEASE_NOTES_0.3.2.en.md)
 
 ## Compilació ràpida
 
@@ -70,13 +72,13 @@ cmake --build build-release
 ctest --test-dir build-release --output-on-failure
 ```
 
-El bundle resultant és `build-release/obs-ccu.plugin`.
+El bundle resultant és `build-release/ccu-studio.plugin`.
 
 ## Instal·lació
 
-- **macOS:** descomprimeix el paquet i copia `obs-ccu.plugin` a
+- **macOS:** descomprimeix el paquet i copia `ccu-studio.plugin` a
   `~/Library/Application Support/obs-studio/plugins/`.
-- **Windows:** descomprimeix la carpeta `obs-ccu` a
+- **Windows:** descomprimeix la carpeta `ccu-studio` a
   `%APPDATA%\obs-studio\plugins\`.
 
 Tanca completament OBS abans de copiar o substituir el plugin.
@@ -99,6 +101,12 @@ El desenvolupament de CCU Studio ha comptat principalment amb l'assistència
 d'**OpenAI Codex/ChatGPT** i **Claude**, sota direcció, proves i revisió
 humanes. Aquest reconeixement no implica afiliació ni aval per part d'OpenAI
 o Anthropic.
+
+Un projecte de **Lluís Bartra Homedes** per a **Moiz i Bartra Produccions,
+SL** i **El Català Emprenyat** ([emprenyat.cat](https://emprenyat.cat)).
+Software ideat i creat íntegrament a Catalunya.
+
+Web del projecte: [emprenyat.cat/obs/CCUstudio](https://emprenyat.cat/obs/CCUstudio)
 
 Si CCU Studio et resulta útil, pots
 [ajudar a desenvolupar més eines mitjançant PayPal](https://www.paypal.com/ncp/payment/PLB-LY4PW9EJNVML).
