@@ -68,10 +68,15 @@ ctest --test-dir build-release --output-on-failure
 - A macOS la finestra es porta al davant mitjançant AppKit.
 - La build macOS encara no està notaritzada; és per a proves.
 
-## Publicació 0.3.0
+## Publicació 0.3.0 completada
 
-- Actualitzar README, guia, desenvolupament i roadmap.
-- Incloure captura, logotip, icones i els dos shaders als paquets.
-- Crear tag/Release `v0.3.0` amb:
+- Commit principal: `411d5ce` (`Release CCU OBS 0.3.0`).
+- Tag i Release: `v0.3.0`.
+- CI Windows del tag: run `30305046685`, completament verd.
+- Assets verificats descarregant-los de la Release:
   - `obs-ccu-0.3.0-macos-universal.zip`
+    - SHA-256: `5b937eb8dfe7686f5018646c8bf186526aed6c78b73e14cb7551c3f9c8e59d91`
   - `obs-ccu-0.3.0-windows-x64.zip`
+    - SHA-256: `b6d8e4d34bcd9cbe402d042b62535f687ee13fd0c72b7d0a1d90591472a907d3`
+- Documentació d’ús i notes de versió disponibles en català i anglès.
+- Captura oficial publicada al README.
