@@ -41,7 +41,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .deps
-          key: windows-obs-deps-${{ env.OBS_VERSION }}-${{ env.OBS_DEPS_VERSION }}-v1
+          # OBS exports absolute build-tree paths. Renaming this repository
+          # therefore requires a fresh cache built under the new workspace.
+          key: windows-obs-deps-${{ env.OBS_VERSION }}-${{ env.OBS_DEPS_VERSION }}-ccu-studio-v1
 
       - name: Download OBS Studio build dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
