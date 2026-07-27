@@ -2,7 +2,7 @@
 
 ## Requisits
 
-- macOS 12 o posterior.
+- macOS 12 o posterior, o Windows 10/11 x64.
 - OBS Studio 32.2 o una versió compatible.
 - Una o més fonts de vídeo creades dins d'OBS.
 - Balanç de blancs automàtic desactivat a les càmeres, si és possible.
@@ -18,16 +18,36 @@ Tanca OBS i copia `obs-ccu.plugin` a:
 Torna a obrir OBS. El registre ha d'incloure:
 
 ```text
-[CCU OBS] Loaded version 0.2.6
+[CCU OBS] Loaded version 0.3.0
 ```
+
+## Instal·lació a Windows
+
+1. Tanca completament OBS.
+2. Descomprimeix el paquet `obs-ccu-0.3.0-windows-x64.zip`.
+3. Copia la carpeta `obs-ccu` sencera a:
+
+```text
+%APPDATA%\obs-studio\plugins\
+```
+
+El resultat ha de contenir
+`%APPDATA%\obs-studio\plugins\obs-ccu\bin\64bit\obs-ccu.dll` i
+`%APPDATA%\obs-studio\plugins\obs-ccu\data\`.
+Torna a obrir OBS i busca `CCU OBS` al menú **Eines**.
 
 ## Obrir i assignar càmeres
 
 1. Obre **Eines → CCU OBS…**.
-2. Utilitza el desplegable de cada canal per assignar-hi una font.
+2. Fes clic dret sobre un visor i escull la seva font al menú contextual.
 3. El CCU manté activa la font mentre la mostra, encara que no sigui visible a
    l'escena actual. No obre físicament la càmera una segona vegada.
-4. Les assignacions es desen al directori de configuració del plugin.
+4. La font actual apareix marcada al menú. Escull **Sense font** per
+   desassignar-la.
+5. Les assignacions es desen al directori de configuració del plugin.
+
+Quan un visor està buit, mostra un símbol `+` i la indicació de fer-hi clic
+dret per seleccionar una font.
 
 ## Càmera activa i controls
 
@@ -41,6 +61,8 @@ Només aquesta càmera respon als controls compartits:
 - **Contrast:** separació respecte del gris mitjà.
 - **Gamma:** redistribució dels tons mitjans.
 - **Saturació:** intensitat global del color.
+- **Original:** activa una pantalla partida original/correcció exclusivament
+  al visor de la càmera activa. No altera el programa ni la gravació.
 - **Restablir:** recupera els valors neutres de la càmera activa.
 
 ## Seleccionar un blanc
@@ -59,7 +81,33 @@ tons de pell o colors específics entre sensors diferents.
 ## Vista ampliada
 
 Selecciona **Lupa** per ocultar temporalment els altres tres canals i ampliar
-la càmera activa. Torna a prémer el botó per recuperar els quatre visors.
+la càmera activa. La vista ampliada ocupa exactament el mateix rectangle que
+el mosaic 2×2, de manera que els controls no es desplacen. Torna a prémer el
+botó per recuperar els quatre visors.
+
+## Referència congelada dels scopes
+
+1. Selecciona la càmera que utilitzaràs com a referència.
+2. Prem **Freeze** a la barra inferior d'eines.
+3. El CCU captura simultàniament l'histograma RGB, el waveform i el
+   vectorscopi. La captura apareix en ambre amb l'indicador `REF`.
+4. Selecciona una altra càmera. Les seves dades continuen actualitzant-se en
+   directe damunt de la mateixa referència congelada.
+5. Canvia lliurement entre les tres pestanyes: totes conserven la captura del
+   mateix fotograma.
+6. Torna a prémer **Freeze** per eliminar la referència.
+
+## Comparar original i correcció
+
+Selecciona **Original** a la barra inferior. El visor actiu queda partit amb
+l'original a l'esquerra i la imatge corregida a la dreta; una línia central
+marca el tall. En canviar de càmera, la comparació segueix només la nova
+càmera activa. És una operació de previsualització i no desactiva ni modifica
+el filtre aplicat a la sortida d'OBS.
+
+La reconstrucció de l'original és exacta mentre la correcció no hagi retallat
+informació. Els píxels que ja hagin arribat a blanc o negre absolut no es
+poden recuperar completament.
 
 ## Persistència
 
@@ -77,7 +125,7 @@ Comprova la ruta del bundle i busca `obs-ccu` al registre d'OBS.
 
 ### Els controls es mouen però la imatge no canvia
 
-Confirma que el títol mostra 0.2.6 o posterior i que la font conté el filtre
+Confirma que el títol mostra 0.3.0 o posterior i que la font conté el filtre
 `CCU OBS`. Reinicia OBS després de substituir un bundle.
 
 ### No hi ha imatge en un visor

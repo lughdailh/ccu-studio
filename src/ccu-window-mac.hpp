@@ -9,4 +9,8 @@
 // behind OBS's main window. This calls Cocoa directly instead.
 void ccuActivateWindowMac(void *nsView);
 
+// Lets AppKit enforce the window proportion while the user drags any resize
+// edge. This avoids recursive Qt resize corrections and their layout jitter.
+void ccuSetWindowAspectRatioMac(void *nsView, double ratio);
+
 #endif

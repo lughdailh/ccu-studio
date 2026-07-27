@@ -1,6 +1,9 @@
 #include "obs-display-widget.hpp"
 
+#include <obs-module.h>
+
 #include <QEnterEvent>
+#include <QLabel>
 #include <QMouseEvent>
 #include <QResizeEvent>
 #include <QShowEvent>
@@ -18,19 +21,45 @@
 #include <cmath>
 
 ObsDisplayWidget::ObsDisplayWidget(QWidget *parent) : QWidget(parent) {
+  const float defaults[] = {1, 1, 1, 0, 1, 1, 1};
+  for (size_t i = 0; i < compareSettings_.size(); ++i)
+    compareSettings_[i] = defaults[i];
+  // Keep the same native-widget hierarchy used by OBS's own Qt display
+  // surfaces. WA_DontCreateNativeAncestors made these four NSViews siblings
+  // of their logical Qt containers on macOS; after a layout resize their
+  // frames could move while the OBS surfaces stayed at the old window
+  // coordinates and painted over unrelated controls.
+  setAttribute(Qt::WA_NativeWindow);
   setAttribute(Qt::WA_PaintOnScreen);
-  setAttribute(Qt::WA_StaticContents);
   setAttribute(Qt::WA_NoSystemBackground);
   setAttribute(Qt::WA_OpaquePaintEvent);
-  setAttribute(Qt::WA_DontCreateNativeAncestors);
-  setAttribute(Qt::WA_NativeWindow);
+  setAutoFillBackground(false);
   setMouseTracking(true);
-  setMinimumSize(220, 124);
+  // The CCU can be reduced on smaller displays. A native child minimum here
+  // propagates through Qt and silently becomes the minimum size of the whole
+  // dialog, so the mosaic itself decides the practical preview size.
+  setMinimumSize(1, 1);
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+  auto *hint = new QLabel(this);
+  emptyHint_ = hint;
+  hint->setAttribute(Qt::WA_TransparentForMouseEvents);
+  hint->setAlignment(Qt::AlignCenter);
+  hint->setWordWrap(true);
+  hint->setStyleSheet(
+      QStringLiteral("QLabel { color: #808080; background: transparent; }"));
+  const QString instruction =
+      QString::fromUtf8(obs_module_text("EmptyPreviewHint")).toHtmlEscaped();
+  hint->setText(
+      QStringLiteral("<div style=\"text-align:center; color:#808080;\">"
+                     "<span style=\"font-size:48px; font-weight:300;\">⊕</span>"
+                     "<br><span style=\"font-size:14px;\">%1</span></div>")
+          .arg(instruction));
 }
 
 ObsDisplayWidget::~ObsDisplayWidget() {
   destroyDisplay();
+  destroyCompareResources();
   if (source_) {
     obs_source_dec_showing(source_);
     obs_source_release(source_);
@@ -47,6 +76,10 @@ void ObsDisplayWidget::setSource(obs_source_t *source) {
   source_ = source ? obs_source_get_ref(source) : nullptr;
   if (source_)
     obs_source_inc_showing(source_);
+  if (emptyHint_) {
+    emptyHint_->setVisible(!source_);
+    emptyHint_->raise();
+  }
 }
 
 void ObsDisplayWidget::setPickMode(bool enabled) {
@@ -58,9 +91,23 @@ void ObsDisplayWidget::setPickMode(bool enabled) {
   setCursor(enabled ? Qt::CrossCursor : Qt::ArrowCursor);
 }
 
+void ObsDisplayWidget::setSelected(bool selected) { selected_ = selected; }
+
+void ObsDisplayWidget::setCompareMode(
+    bool enabled, const std::array<float, 7> &settings) {
+  for (size_t i = 0; i < settings.size(); ++i)
+    compareSettings_[i] = settings[i];
+  compareMode_ = enabled;
+}
+
 void ObsDisplayWidget::setClickHandler(
     std::function<void(const QPointF &)> handler) {
   clickHandler_ = std::move(handler);
+}
+
+void ObsDisplayWidget::setContextMenuHandler(
+    std::function<void(const QPoint &)> handler) {
+  contextMenuHandler_ = std::move(handler);
 }
 
 int ObsDisplayWidget::heightForWidth(int width) const {
@@ -120,11 +167,18 @@ void ObsDisplayWidget::paintEvent(QPaintEvent *) { createDisplay(); }
 
 void ObsDisplayWidget::showEvent(QShowEvent *event) {
   QWidget::showEvent(event);
+  if (emptyHint_)
+    emptyHint_->raise();
   createDisplay();
 }
 
 void ObsDisplayWidget::resizeEvent(QResizeEvent *event) {
   QWidget::resizeEvent(event);
+  if (emptyHint_) {
+    const int hintWidth = std::min(width(), 360);
+    emptyHint_->setGeometry((width() - hintWidth) / 2, 0, hintWidth, height());
+    emptyHint_->raise();
+  }
   createDisplay();
   if (display_) {
     const qreal ratio = devicePixelRatioF();
@@ -135,6 +189,10 @@ void ObsDisplayWidget::resizeEvent(QResizeEvent *event) {
 }
 
 void ObsDisplayWidget::mousePressEvent(QMouseEvent *event) {
+  if (event->button() == Qt::RightButton && contextMenuHandler_) {
+    contextMenuHandler_(mapToGlobal(event->position().toPoint()));
+    return;
+  }
   if (event->button() == Qt::LeftButton && clickHandler_) {
     const QRectF image = videoRect();
     if (image.contains(event->position())) {
@@ -185,34 +243,141 @@ void ObsDisplayWidget::leaveEvent(QEvent *event) {
 
 void ObsDisplayWidget::draw(void *data, uint32_t width, uint32_t height) {
   auto *widget = static_cast<ObsDisplayWidget *>(data);
-  if (!widget || !widget->source_)
+  if (!widget)
     return;
 
-  const uint32_t sourceWidth =
-      std::max(obs_source_get_width(widget->source_), 1u);
-  const uint32_t sourceHeight =
-      std::max(obs_source_get_height(widget->source_), 1u);
-  const float scale =
-      std::min(static_cast<float>(width) / sourceWidth,
-               static_cast<float>(height) / sourceHeight);
-  const int outputWidth = static_cast<int>(sourceWidth * scale);
-  const int outputHeight = static_cast<int>(sourceHeight * scale);
-  const int x = (static_cast<int>(width) - outputWidth) / 2;
-  const int y = (static_cast<int>(height) - outputHeight) / 2;
+  if (widget->source_) {
+    const uint32_t sourceWidth =
+        std::max(obs_source_get_width(widget->source_), 1u);
+    const uint32_t sourceHeight =
+        std::max(obs_source_get_height(widget->source_), 1u);
+    const float scale =
+        std::min(static_cast<float>(width) / sourceWidth,
+                 static_cast<float>(height) / sourceHeight);
+    const int outputWidth = static_cast<int>(sourceWidth * scale);
+    const int outputHeight = static_cast<int>(sourceHeight * scale);
+    const int x = (static_cast<int>(width) - outputWidth) / 2;
+    const int y = (static_cast<int>(height) - outputHeight) / 2;
+
+    gs_viewport_push();
+    gs_projection_push();
+    const bool previous = gs_set_linear_srgb(true);
+    gs_ortho(0.0f, static_cast<float>(sourceWidth), 0.0f,
+             static_cast<float>(sourceHeight), -100.0f, 100.0f);
+    gs_set_viewport(x, y, outputWidth, outputHeight);
+    obs_source_video_render(widget->source_);
+    gs_set_linear_srgb(previous);
+    gs_projection_pop();
+    gs_viewport_pop();
+
+    if (widget->compareMode_.load())
+      widget->drawComparison(width, height, x, y, outputWidth, outputHeight,
+                             sourceWidth, sourceHeight);
+
+    if (widget->pickMode_.load())
+      widget->drawMagnifier(width, height);
+  }
+
+  if (widget->selected_.load()) {
+    const vec4 gold = {0.902f, 0.706f, 0.133f, 1.0f};
+    constexpr float thickness = 1.0f;
+    widget->drawSolidRect(0, 0, static_cast<float>(width), thickness, width,
+                          height, gold);
+    widget->drawSolidRect(0, static_cast<float>(height) - thickness,
+                          static_cast<float>(width), thickness, width, height,
+                          gold);
+    widget->drawSolidRect(0, 0, thickness, static_cast<float>(height), width,
+                          height, gold);
+    widget->drawSolidRect(static_cast<float>(width) - thickness, 0, thickness,
+                          static_cast<float>(height), width, height, gold);
+  }
+}
+
+bool ObsDisplayWidget::ensureCompareResources() {
+  if (!compareRender_)
+    compareRender_ = gs_texrender_create(GS_RGBA, GS_ZS_NONE);
+  if (!compareEffect_) {
+    char *path = obs_module_file("ccu-compare.effect");
+    char *errors = nullptr;
+    compareEffect_ =
+        path ? gs_effect_create_from_file(path, &errors) : nullptr;
+    if (!compareEffect_)
+      blog(LOG_ERROR, "[CCU OBS] Compare shader error: %s",
+           errors ? errors : "effect not found");
+    bfree(errors);
+    bfree(path);
+  }
+  return compareRender_ && compareEffect_;
+}
+
+void ObsDisplayWidget::destroyCompareResources() {
+  if (!compareRender_ && !compareEffect_)
+    return;
+  obs_enter_graphics();
+  gs_texrender_destroy(compareRender_);
+  gs_effect_destroy(compareEffect_);
+  compareRender_ = nullptr;
+  compareEffect_ = nullptr;
+  obs_leave_graphics();
+}
+
+void ObsDisplayWidget::drawComparison(
+    uint32_t canvasWidth, uint32_t canvasHeight, int x, int y,
+    int outputWidth, int outputHeight, uint32_t sourceWidth,
+    uint32_t sourceHeight) {
+  if (!source_ || outputWidth < 2 || outputHeight < 1 ||
+      !ensureCompareResources())
+    return;
+
+  gs_texrender_reset(compareRender_);
+  if (!gs_texrender_begin_with_color_space(compareRender_, sourceWidth,
+                                           sourceHeight, GS_CS_SRGB))
+    return;
+  vec4 clear{};
+  gs_clear(GS_CLEAR_COLOR, &clear, 0.0f, 0);
+  gs_ortho(0.0f, static_cast<float>(sourceWidth), 0.0f,
+           static_cast<float>(sourceHeight), -100.0f, 100.0f);
+  gs_set_viewport(0, 0, sourceWidth, sourceHeight);
+  obs_source_video_render(source_);
+  gs_texrender_end(compareRender_);
+
+  gs_texture_t *texture = gs_texrender_get_texture(compareRender_);
+  if (!texture)
+    return;
+  const char *names[] = {"red_gain",  "green_gain", "blue_gain",
+                         "brightness", "contrast",   "gamma_value",
+                         "saturation"};
+  for (size_t i = 0; i < compareSettings_.size(); ++i) {
+    if (gs_eparam_t *parameter =
+            gs_effect_get_param_by_name(compareEffect_, names[i]))
+      gs_effect_set_float(parameter, compareSettings_[i].load());
+  }
+  if (gs_eparam_t *image =
+          gs_effect_get_param_by_name(compareEffect_, "image"))
+    gs_effect_set_texture(image, texture);
 
   gs_viewport_push();
   gs_projection_push();
-  const bool previous = gs_set_linear_srgb(true);
-  gs_ortho(0.0f, static_cast<float>(sourceWidth), 0.0f,
-           static_cast<float>(sourceHeight), -100.0f, 100.0f);
-  gs_set_viewport(x, y, outputWidth, outputHeight);
-  obs_source_video_render(widget->source_);
-  gs_set_linear_srgb(previous);
+  gs_matrix_push();
+  gs_ortho(0.0f, static_cast<float>(canvasWidth), 0.0f,
+           static_cast<float>(canvasHeight), -100.0f, 100.0f);
+  gs_set_viewport(0, 0, canvasWidth, canvasHeight);
+  gs_matrix_identity();
+  gs_matrix_translate3f(static_cast<float>(x), static_cast<float>(y), 0.0f);
+  const gs_rect leftHalf{x, y, outputWidth / 2, outputHeight};
+  gs_set_scissor_rect(&leftHalf);
+  while (gs_effect_loop(compareEffect_, "Draw"))
+    gs_draw_sprite(texture, 0, static_cast<uint32_t>(outputWidth),
+                   static_cast<uint32_t>(outputHeight));
+  gs_set_scissor_rect(nullptr);
+  gs_matrix_pop();
   gs_projection_pop();
   gs_viewport_pop();
 
-  if (widget->pickMode_.load())
-    widget->drawMagnifier(width, height);
+  const vec4 divider = {0.92f, 0.92f, 0.92f, 0.86f};
+  drawSolidRect(x + outputWidth / 2.0f, static_cast<float>(y), 1.0f,
+                static_cast<float>(outputHeight), canvasWidth, canvasHeight,
+                divider);
 }
 
 void ObsDisplayWidget::drawSolidRect(float x, float y, float width,

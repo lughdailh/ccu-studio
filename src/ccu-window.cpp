@@ -14,11 +14,14 @@
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLabel>
 #include <QMessageBox>
+#include <QMenu>
 #include <QPointer>
+#include <QPainter>
 #include <QPushButton>
 #include <QGuiApplication>
 #include <QResizeEvent>
@@ -26,6 +29,7 @@
 #include <QSlider>
 #include <QTabWidget>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QWindow>
 
@@ -50,13 +54,54 @@ constexpr const char *keys[] = {"red_gain",  "green_gain", "blue_gain",
 class PreviewShell final : public QFrame {
 public:
   explicit PreviewShell(QWidget *parent = nullptr) : QFrame(parent) {
-    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setMinimumSize(1, 1);
+    setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   }
 };
 
+class PreviewContainer final : public QWidget {
+public:
+  explicit PreviewContainer(QWidget *parent = nullptr) : QWidget(parent) {}
+
+  void setPreferredSize(const QSize &size) {
+    if (preferredSize_ == size)
+      return;
+    preferredSize_ = size;
+    updateGeometry();
+  }
+
+  QSize sizeHint() const override { return preferredSize_; }
+  QSize minimumSizeHint() const override { return {1, 1}; }
+
+private:
+  QSize preferredSize_{1, 1};
+};
+
 int previewShellHeightForWidth(int width) {
-  const int contentWidth = std::max(1, width - 6);
-  return static_cast<int>(std::lround(contentWidth * 9.0 / 16.0)) + 6;
+  return static_cast<int>(std::lround(std::max(1, width) * 9.0 / 16.0));
+}
+
+QIcon whiteModuleIcon(const char *fileName) {
+  char *path = obs_module_file(fileName);
+  QPixmap pixels(path ? QString::fromUtf8(path) : QString());
+  bfree(path);
+  if (pixels.isNull())
+    return {};
+  QPainter painter(&pixels);
+  painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+  painter.fillRect(pixels.rect(), Qt::white);
+  painter.end();
+  return QIcon(pixels);
+}
+
+QString roundButtonStyle() {
+  return QStringLiteral(
+      "QToolButton { background: #192a63; color: white; border: 1px solid "
+      "#263b7d; border-radius: 28px; padding: 8px; }"
+      "QToolButton:hover { background: #243a82; }"
+      "QToolButton:checked { background: #304b9b; border-color: #d9ad32; }"
+      "QToolButton:pressed { background: #101d49; }");
 }
 
 struct SliderSpec {
@@ -190,8 +235,27 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
   setWindowFlag(Qt::Window, true);
   setModal(false);
 
-  auto *mainLayout = new QHBoxLayout(this);
+  auto *rootLayout = new QVBoxLayout(this);
+  rootLayout->setContentsMargins(19, 21, 19, 18);
+  rootLayout->setSpacing(22);
+
+  auto *title = new QLabel(this);
+  title->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+  title->setFixedSize(290, 49);
+  title->setContentsMargins(9, 0, 0, 0);
+  char *titlePath = obs_module_file("CCUOBS_TTL.png");
+  const QPixmap titlePixels(titlePath ? QString::fromUtf8(titlePath)
+                                      : QString());
+  bfree(titlePath);
+  if (!titlePixels.isNull())
+    title->setPixmap(titlePixels.scaled(
+        281, 49, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+  title->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+  rootLayout->addWidget(title, 0, Qt::AlignLeft);
+
+  auto *mainLayout = new QHBoxLayout;
   mainLayout->setSpacing(12);
+  rootLayout->addLayout(mainLayout, 1);
 
   leftPanel_ = new QWidget(this);
   auto *leftPanel = leftPanel_;
@@ -200,89 +264,136 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
   leftLayout->setContentsMargins(0, 0, 0, 0);
   leftLayout->setSpacing(8);
 
-  previewGrid_ = new QGridLayout;
-  previewGrid_->setContentsMargins(0, 0, 0, 0);
-  previewGrid_->setHorizontalSpacing(8);
-  previewGrid_->setVerticalSpacing(8);
-  previewGrid_->setColumnStretch(0, 1);
-  previewGrid_->setColumnStretch(1, 1);
-  previewGrid_->setRowStretch(0, 1);
-  previewGrid_->setRowStretch(1, 1);
-  leftLayout->addLayout(previewGrid_, 1);
+  previewContainer_ = new PreviewContainer(leftPanel);
+  previewContainer_->setMinimumSize(1, 1);
+  previewContainer_->setSizePolicy(QSizePolicy::Expanding,
+                                   QSizePolicy::Expanding);
 
   for (int i = 0; i < 4; ++i) {
     Channel &channel = channels_[i];
-    channel.frame = new QFrame(leftPanel);
-    channel.frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    channel.frame = new QFrame(previewContainer_);
     auto *layout = new QVBoxLayout(channel.frame);
     layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(4);
-    channel.sourceBox = new QComboBox(channel.frame);
+    layout->setSpacing(0);
+    channel.sourceBox = new QComboBox(leftPanel);
+    channel.sourceBox->hide();
     channel.previewShell = new PreviewShell(channel.frame);
     channel.previewShell->setObjectName(
         QStringLiteral("previewShell%1").arg(i + 1));
     auto *previewLayout = new QVBoxLayout(channel.previewShell);
-    previewLayout->setContentsMargins(3, 3, 3, 3);
+    previewLayout->setContentsMargins(0, 0, 0, 0);
+    previewLayout->setSpacing(0);
     channel.preview = new ObsDisplayWidget(channel.previewShell);
     previewLayout->addWidget(channel.preview);
-    auto *label = new QLabel(
-        QString::fromUtf8(obs_module_text("CameraLabel")).arg(i + 1),
-        channel.frame);
-    label->setAlignment(Qt::AlignCenter);
-    layout->addWidget(channel.sourceBox);
     layout->addWidget(channel.previewShell);
-    layout->addWidget(label);
-    // Qt::AlignTop here keeps a Fixed-policy frame pinned to the top of
-    // its cell instead of centered in any stretch-allocated leftover
-    // space. relayoutChannels() clears it (via setAlignment, without
-    // re-adding) just for the zoomed cell, which needs to actually fill
-    // its cell rather than stay pinned to its small sizeHint.
-    previewGrid_->addWidget(channel.frame, i / 2, i % 2, Qt::AlignTop);
     connect(channel.sourceBox, &QComboBox::currentIndexChanged, this,
             [this, i](int) { chooseSource(i); });
     channel.preview->setClickHandler([this, i](const QPointF &position) {
-      if (pickerActive_)
+      if (pickerActive_ && i == selected_)
         sampleWhite(i, position);
-      else
+      else if (!pickerActive_)
         selectChannel(i);
     });
+    channel.preview->setContextMenuHandler(
+        [this, i](const QPoint &position) { showSourceMenu(i, position); });
+    channel.preview->setToolTip(
+        QString::fromUtf8(obs_module_text("SourceMenuTooltip")));
   }
 
-  auto *selectors = new QHBoxLayout;
-  selectors->addStretch();
-  selectors->addWidget(
-      new QLabel(QString::fromUtf8(obs_module_text("ActiveCameraLabel")), this));
+  leftLayout->addWidget(previewContainer_, 1);
+
+  auto *cameraControlGroup = new QWidget(this);
+  cameraControlGroup->setSizePolicy(QSizePolicy::Preferred,
+                                    QSizePolicy::Fixed);
+  auto *selectors = new QVBoxLayout(cameraControlGroup);
+  selectors->setContentsMargins(0, 0, 0, 0);
+  selectors->setSpacing(4);
+  auto *activeCameraLabel =
+      new QLabel(QString::fromUtf8(obs_module_text("ActiveCameraLabel")),
+                 cameraControlGroup);
+  activeCameraLabel->setAlignment(Qt::AlignHCenter);
+  selectors->addWidget(activeCameraLabel);
+  auto *cameraButtons = new QHBoxLayout;
+  cameraButtons->setSpacing(18);
+  cameraButtons->addStretch();
   for (int i = 0; i < 4; ++i) {
-    selectButtons_[i] = new QPushButton(QString::number(i + 1), this);
+    selectButtons_[i] = new QToolButton(cameraControlGroup);
+    selectButtons_[i]->setText(QString::number(i + 1));
+    selectButtons_[i]->setToolButtonStyle(Qt::ToolButtonTextOnly);
     selectButtons_[i]->setCheckable(true);
-    selectButtons_[i]->setMinimumWidth(52);
-    selectors->addWidget(selectButtons_[i]);
-    connect(selectButtons_[i], &QPushButton::clicked, this,
+    selectButtons_[i]->setFixedSize(56, 56);
+    selectButtons_[i]->setStyleSheet(
+        roundButtonStyle() +
+        QStringLiteral("QToolButton { font-size: 16px; padding: 0; }"));
+    cameraButtons->addWidget(selectButtons_[i]);
+    connect(selectButtons_[i], &QToolButton::clicked, this,
             [this, i] { selectChannel(i); });
   }
-  selectors->addStretch();
-  leftLayout->addLayout(selectors);
+  cameraButtons->addStretch();
+  selectors->addLayout(cameraButtons);
+  leftLayout->addWidget(cameraControlGroup);
+  leftLayout->addSpacing(15);
 
   auto *tools = new QHBoxLayout;
+  tools->setSpacing(12);
   tools->addStretch();
+  auto makeToolButton = [this](const char *textKey, const char *iconFile) {
+    auto *button = new QToolButton(this);
+    button->setText(QString::fromUtf8(obs_module_text(textKey)));
+    button->setIcon(whiteModuleIcon(iconFile));
+    button->setIconSize({28, 28});
+    button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    button->setFixedSize(56, 56);
+    button->setCheckable(true);
+    button->setStyleSheet(roundButtonStyle());
+    return button;
+  };
+  auto toolWithLabel = [this](QToolButton *button) {
+    auto *container = new QWidget(this);
+    container->setFixedWidth(100);
+    auto *layout = new QVBoxLayout(container);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(2);
+    layout->setAlignment(Qt::AlignHCenter);
+    auto *label = new QLabel(button->text(), container);
+    label->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
+    label->setStyleSheet(QStringLiteral("color: #dddddd;"));
+    layout->addWidget(button, 0, Qt::AlignHCenter);
+    layout->addWidget(label, 0, Qt::AlignHCenter);
+    return container;
+  };
   pickerButton_ =
-      new QPushButton(QString::fromUtf8(obs_module_text("PickerButton")), this);
+      makeToolButton("PickerButton", "icons/comptegotes.png");
   pickerButton_->setCheckable(true);
-  zoomButton_ =
-      new QPushButton(QString::fromUtf8(obs_module_text("ZoomButton")), this);
+  zoomButton_ = makeToolButton("ZoomButton", "icons/lopa.png");
   zoomButton_->setCheckable(true);
-  auto *reset =
-      new QPushButton(QString::fromUtf8(obs_module_text("ResetButton")), this);
-  tools->addWidget(pickerButton_);
-  tools->addWidget(zoomButton_);
-  tools->addWidget(reset);
+  freezeButton_ = makeToolButton("FreezeButton", "icons/freeze.png");
+  freezeButton_->setCheckable(true);
+  freezeButton_->setToolTip(
+      QString::fromUtf8(obs_module_text("FreezeTooltip")));
+  compareButton_ = makeToolButton("CompareButton", "icons/original.png");
+  compareButton_->setCheckable(true);
+  compareButton_->setToolTip(
+      QString::fromUtf8(obs_module_text("CompareTooltip")));
+  auto *reset = makeToolButton("ResetButton", "icons/restablir.png");
+  reset->setCheckable(false);
+  tools->addWidget(toolWithLabel(pickerButton_));
+  tools->addWidget(toolWithLabel(zoomButton_));
+  tools->addWidget(toolWithLabel(freezeButton_));
+  tools->addWidget(toolWithLabel(compareButton_));
+  tools->addWidget(toolWithLabel(reset));
   tools->addStretch();
   leftLayout->addLayout(tools);
-  connect(pickerButton_, &QPushButton::clicked, this, [this] { togglePicker(); });
-  connect(zoomButton_, &QPushButton::clicked, this, [this] { toggleZoom(); });
-  connect(reset, &QPushButton::clicked, this, [this] { resetControls(); });
+  connect(pickerButton_, &QToolButton::clicked, this, [this] { togglePicker(); });
+  connect(zoomButton_, &QToolButton::clicked, this, [this] { toggleZoom(); });
+  connect(freezeButton_, &QToolButton::clicked, this,
+          [this] { toggleScopeFreeze(); });
+  connect(compareButton_, &QToolButton::clicked, this,
+          [this] { toggleCompare(); });
+  connect(reset, &QToolButton::clicked, this, [this] { resetControls(); });
 
   auto *rightPanel = new QFrame(this);
+  rightPanel_ = rightPanel;
   rightPanel->setFrameShape(QFrame::StyledPanel);
   rightPanel->setMinimumWidth(330);
   rightPanel->setMaximumWidth(520);
@@ -292,10 +403,13 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
   status_ = new QLabel(
       QString::fromUtf8(obs_module_text("StatusSelectSource")), rightPanel);
   status_->setWordWrap(true);
-  status_->setMinimumHeight(38);
-  rightLayout->addWidget(status_);
+  // Status messages remain available to the interaction logic and assistive
+  // tools, but the visual composition follows the CCU reference: the scope
+  // starts level with the preview mosaic rather than under a status banner.
+  status_->hide();
 
   auto *scopeTabs = new QTabWidget(rightPanel);
+  scopeTabs_ = scopeTabs;
   histogram_ = new ScopeWidget(ScopeWidget::Type::Histogram, scopeTabs);
   waveform_ = new ScopeWidget(ScopeWidget::Type::Waveform, scopeTabs);
   vectorscope_ = new ScopeWidget(ScopeWidget::Type::Vectorscope, scopeTabs);
@@ -303,13 +417,20 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
   scopeTabs->addTab(waveform_, QString::fromUtf8(obs_module_text("TabWaveform")));
   scopeTabs->addTab(vectorscope_,
                     QString::fromUtf8(obs_module_text("TabVectorscope")));
-  rightLayout->addWidget(scopeTabs, 1);
+  scopeTabs->setTabPosition(QTabWidget::South);
+  scopeTabs->setMinimumHeight(300);
+  scopeTabs->setMaximumHeight(465);
+  scopeTabs->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  rightLayout->addWidget(scopeTabs);
+  rightLayout->addStretch(1);
 
   auto *generalGroup = new QGroupBox(
       QString::fromUtf8(obs_module_text("GroupLevels")), rightPanel);
+  generalGroup->setFixedHeight(188);
   auto *generalControls = new QGridLayout(generalGroup);
   auto *rgbGroup = new QGroupBox(
       QString::fromUtf8(obs_module_text("GroupLevelsRGB")), rightPanel);
+  rgbGroup->setFixedHeight(161);
   auto *rgbControls = new QGridLayout(rgbGroup);
 
   QSlider **sliders[] = {&red_, &green_, &blue_, &brightness_,
@@ -348,8 +469,8 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
   rightLayout->addWidget(generalGroup);
   rightLayout->addWidget(rgbGroup);
 
-  mainLayout->addWidget(leftPanel, 3);
-  mainLayout->addWidget(rightPanel, 1);
+  mainLayout->addWidget(leftPanel, 31);
+  mainLayout->addWidget(rightPanel, 10);
 
   refreshSources();
   loadAssignments();
@@ -371,10 +492,20 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
     if (!targetScreen)
       return;
     const QRect available = targetScreen->availableGeometry();
-    const QSize targetSize(
+    // Work in Qt logical pixels so the same limits behave consistently on
+    // macOS Retina screens and Windows displays with DPI scaling.  A 1080p
+    // desktop therefore gets a comfortably fitting window instead of one
+    // whose controls crowd the taskbar or OBS chrome.
+    constexpr int maximumInitialWidth = 1650;
+    constexpr int maximumInitialHeight = 990;
+    const QSize maximumAvailableSize(
         static_cast<int>(std::lround(available.width() * 0.85)),
         static_cast<int>(std::lround(available.height() * 0.85)));
+    const QSize targetSize =
+        QSize(maximumInitialWidth, maximumInitialHeight)
+            .scaled(maximumAvailableSize, Qt::KeepAspectRatio);
     resize(targetSize);
+    applyWindowAspectRatio();
     move(available.center() - QPoint(width() / 2, height() / 2));
   });
 }
@@ -384,6 +515,15 @@ CcuWindow::~CcuWindow() {
   for (Channel &channel : channels_)
     if (channel.source)
       obs_source_release(channel.source);
+}
+
+void CcuWindow::applyWindowAspectRatio() {
+#ifdef __APPLE__
+  // Reapply after show() as well as after construction: an NSWindow is not
+  // guaranteed to exist when the dialog's first queued size calculation
+  // runs, and setContentAspectRatio on a detached NSView has no effect.
+  ccuSetWindowAspectRatioMac(reinterpret_cast<void *>(winId()), 5.0 / 3.0);
+#endif
 }
 
 void CcuWindow::refreshSources() {
@@ -408,18 +548,14 @@ void CcuWindow::selectChannel(int index) {
   for (int i = 0; i < 4; ++i) {
     const bool active = i == selected_;
     selectButtons_[i]->setChecked(active);
-    channels_[i].previewShell->setStyleSheet(
-        active
-            ? QStringLiteral(
-                  "QFrame#previewShell%1 { border: 3px solid #e6b422; }")
-                  .arg(i + 1)
-            : QStringLiteral(
-                  "QFrame#previewShell%1 { border: 3px solid transparent; }")
-                  .arg(i + 1));
+    channels_[i].previewShell->setStyleSheet(QString());
+    channels_[i].preview->setSelected(active);
+    channels_[i].preview->setPickMode(pickerActive_ && active);
   }
   if (zoomed_)
     relayoutChannels();
   updateSelectedUi();
+  updateComparePreview();
 }
 
 void CcuWindow::chooseSource(int index) {
@@ -432,11 +568,39 @@ void CcuWindow::chooseSource(int index) {
     channel.source = obs_get_source_by_name(
         channel.sourceBox->currentText().toUtf8().constData());
   channel.preview->setSource(channel.source);
+  if (channel.source) {
+    channel.preview->setToolTip(
+        QString::fromUtf8(obs_module_text("SourceAssignedTooltip"))
+            .arg(channel.sourceBox->currentText())
+            .arg(obs_source_get_width(channel.source))
+            .arg(obs_source_get_height(channel.source)));
+  } else {
+    channel.preview->setToolTip(
+        QString::fromUtf8(obs_module_text("SourceMenuTooltip")));
+  }
   if (channel.source)
     ensureFilter(channel.source);
   saveAssignments();
   if (index == selected_)
     updateSelectedUi();
+}
+
+void CcuWindow::showSourceMenu(int index, const QPoint &globalPosition) {
+  selectChannel(index);
+  refreshSources();
+
+  QMenu menu(this);
+  menu.setTitle(QString::fromUtf8(obs_module_text("SourceMenuTitle")));
+  Channel &channel = channels_[index];
+  for (int item = 0; item < channel.sourceBox->count(); ++item) {
+    QAction *action = menu.addAction(channel.sourceBox->itemText(item));
+    action->setCheckable(true);
+    action->setChecked(item == channel.sourceBox->currentIndex());
+    connect(action, &QAction::triggered, this, [this, index, item] {
+      channels_[index].sourceBox->setCurrentIndex(item);
+    });
+  }
+  menu.exec(globalPosition);
 }
 
 obs_source_t *CcuWindow::ensureFilter(obs_source_t *source) {
@@ -492,6 +656,7 @@ void CcuWindow::applyControls() {
   obs_source_update(filter, settings);
   obs_data_release(settings);
   obs_source_release(filter);
+  updateComparePreview();
 }
 
 void CcuWindow::resetControls() {
@@ -507,8 +672,8 @@ void CcuWindow::resetControls() {
 
 void CcuWindow::togglePicker() {
   pickerActive_ = pickerButton_->isChecked();
-  for (Channel &channel : channels_)
-    channel.preview->setPickMode(pickerActive_);
+  for (int i = 0; i < 4; ++i)
+    channels_[i].preview->setPickMode(pickerActive_ && i == selected_);
   status_->setText(QString::fromUtf8(obs_module_text(
       pickerActive_ ? "StatusPickerActive" : "StatusPickerInactive")));
 }
@@ -520,39 +685,64 @@ void CcuWindow::toggleZoom() {
       zoomed_ ? "StatusZoomActive" : "StatusZoomInactive")));
 }
 
-void CcuWindow::relayoutChannels() {
-  if (!previewGrid_)
+void CcuWindow::toggleScopeFreeze() {
+  if (!freezeButton_)
     return;
-  // Earlier attempts made the selected frame span both grid rows
-  // (addWidget(..., 0, 0, 2, 2)) or moved it into a separate sibling
-  // container. Both changed which layout/cell a widget belonged to, and
-  // both left the window either permanently taller (QGridLayout doesn't
-  // fully drop the minimum size a row-span asked for once the span is
-  // undone) or the zoomed preview's native OBS display view visually
-  // detached from its widget (reparenting an ObsDisplayWidget across
-  // different layouts left a stale render behind). Every frame now stays
-  // in its original (row, col) cell forever; "zooming" only hides the
-  // other three and zeroes their row/column stretch, so the selected
-  // cell's Expanding-policy shell (see updatePreviewSizes) is the only
-  // thing that ever grows.
+
+  if (freezeButton_->isChecked()) {
+    // Capture on demand so a click immediately after changing camera cannot
+    // accidentally freeze the previous camera's last timer sample.
+    updateScopes();
+    if (lastScopeData_.empty() || lastScopeChannel_ != selected_) {
+      freezeButton_->setChecked(false);
+      status_->setText(
+          QString::fromUtf8(obs_module_text("StatusFreezeUnavailable")));
+      return;
+    }
+    frozenScopeChannel_ = selected_;
+    histogram_->setReferenceData(lastScopeData_);
+    waveform_->setReferenceData(lastScopeData_);
+    vectorscope_->setReferenceData(lastScopeData_);
+    status_->setText(
+        QString::fromUtf8(obs_module_text("StatusFreezeActive"))
+            .arg(frozenScopeChannel_ + 1));
+  } else {
+    frozenScopeChannel_ = -1;
+    histogram_->clearReference();
+    waveform_->clearReference();
+    vectorscope_->clearReference();
+    status_->setText(
+        QString::fromUtf8(obs_module_text("StatusFreezeCleared")));
+  }
+}
+
+void CcuWindow::toggleCompare() {
+  updateComparePreview();
+  status_->setText(QString::fromUtf8(obs_module_text(
+      compareButton_->isChecked() ? "StatusCompareActive"
+                                  : "StatusCompareInactive")));
+}
+
+void CcuWindow::updateComparePreview() {
+  std::array<float, 7> settings{1, 1, 1, 0, 1, 1, 1};
+  QSlider *sliders[] = {red_, green_, blue_, brightness_,
+                        contrast_, gamma_, saturation_};
+  for (int i = 0; i < 7; ++i)
+    if (sliders[i])
+      settings[i] = static_cast<float>(
+          settingValue(i, sliders[i]->value()));
+  for (int i = 0; i < 4; ++i)
+    channels_[i].preview->setCompareMode(
+        compareButton_ && compareButton_->isChecked() && i == selected_,
+        settings);
+}
+
+void CcuWindow::relayoutChannels() {
+  if (!previewContainer_)
+    return;
   for (int i = 0; i < 4; ++i) {
-    const bool isSelectedAndZoomed = zoomed_ && i == selected_;
-    channels_[i].frame->setSizePolicy(
-        QSizePolicy::Expanding,
-        isSelectedAndZoomed ? QSizePolicy::Expanding : QSizePolicy::Fixed);
-    // AlignTop for everything except the zoomed cell, which needs to
-    // actually fill its cell instead of staying pinned to its sizeHint.
-    previewGrid_->setAlignment(channels_[i].frame,
-                               isSelectedAndZoomed ? Qt::Alignment() : Qt::AlignTop);
     channels_[i].frame->setVisible(!zoomed_ || i == selected_);
   }
-  const int selectedRow = selected_ / 2;
-  const int selectedCol = selected_ % 2;
-  for (int row = 0; row < 2; ++row)
-    previewGrid_->setRowStretch(row, (!zoomed_ || row == selectedRow) ? 1 : 0);
-  for (int col = 0; col < 2; ++col)
-    previewGrid_->setColumnStretch(col,
-                                   (!zoomed_ || col == selectedCol) ? 1 : 0);
   updatePreviewSizes();
   // The shrinking preview shell can leave stale pixels behind in the area
   // it no longer covers (the source combo box briefly appeared to be
@@ -562,38 +752,107 @@ void CcuWindow::relayoutChannels() {
 }
 
 void CcuWindow::updatePreviewSizes() {
-  if (!leftPanel_ || !previewGrid_)
+  previewResizePending_ = false;
+  if (!leftPanel_ || !previewContainer_)
     return;
   // QGridLayout doesn't reliably honor heightForWidth, so the 16:9 preview
   // aspect ratio is driven explicitly from the actual column width instead
   // of letting each shell fight the layout reactively in its own
   // resizeEvent (that caused the preview to render at a stale, mismatched
   // size).
-  const int totalWidth = leftPanel_->width();
-  const int columnWidth =
-      std::max(1, (totalWidth - previewGrid_->horizontalSpacing()) / 2);
-  const int rowHeight = previewShellHeightForWidth(columnWidth);
-  for (int i = 0; i < 4; ++i) {
-    QFrame *shell = channels_[i].previewShell;
-    if (zoomed_ && i == selected_) {
-      // Let the zeroed sibling row/column stretch (relayoutChannels) hand
-      // this cell all the available space, and let this shell actually
-      // grow to fill it - ObsDisplayWidget::draw() already letterboxes to
-      // the source's real aspect ratio, so it doesn't need to stay 16:9
-      // shaped itself.
-      shell->setMinimumHeight(0);
-      shell->setMaximumHeight(QWIDGETSIZE_MAX);
-      shell->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    } else {
-      shell->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-      shell->setFixedHeight(rowHeight);
+  const QMargins panelMargins = leftLayout_->contentsMargins();
+  int fixedControlsHeight = panelMargins.top() + panelMargins.bottom();
+  for (int i = 0; i < leftLayout_->count(); ++i) {
+    QLayoutItem *item = leftLayout_->itemAt(i);
+    if (item && item->widget() != previewContainer_)
+      fixedControlsHeight += item->sizeHint().height();
+  }
+  fixedControlsHeight +=
+      std::max(0, leftLayout_->count() - 1) * leftLayout_->spacing();
+
+  const int availableMosaicHeight =
+      std::max(1, leftPanel_->height() - fixedControlsHeight);
+  const int availableMosaicWidth =
+      std::max(1, leftPanel_->width() - panelMargins.left() -
+                      panelMargins.right());
+  constexpr int horizontalGap = 1;
+  constexpr int verticalGap = 1;
+  const int widthLimitedColumn =
+      std::max(1, (availableMosaicWidth - horizontalGap) / 2);
+  const int widthLimitedRowHeight =
+      previewShellHeightForWidth(widthLimitedColumn);
+  const int heightLimitedRowHeight =
+      std::max(1, (availableMosaicHeight - verticalGap) / 2);
+  const int rowHeight =
+      std::min(widthLimitedRowHeight, heightLimitedRowHeight);
+  const int columnWidth = std::max(
+      1, static_cast<int>(std::lround(rowHeight * (16.0 / 9.0))));
+  // The zoomed preview deliberately keeps the exact same outer rectangle as
+  // the 2×2 mosaic. Changing the container's size here used to make the
+  // camera/tool controls jump and made the enlarged image start and end at
+  // different coordinates than the four-camera view.
+  const int mosaicWidth = columnWidth * 2 + horizontalGap;
+  const int mosaicHeight = rowHeight * 2 + verticalGap;
+  static_cast<PreviewContainer *>(previewContainer_)
+      ->setPreferredSize({mosaicWidth, mosaicHeight});
+  leftLayout_->setAlignment(previewContainer_, Qt::AlignHCenter);
+  previewContainer_->setMinimumSize(1, 1);
+  previewContainer_->setMaximumSize(mosaicWidth, mosaicHeight);
+  previewContainer_->setSizePolicy(QSizePolicy::Expanding,
+                                   QSizePolicy::Expanding);
+
+  // Applying a new maximum changes the space QVBoxLayout assigns to the
+  // container. Settle that geometry before placing the four unmanaged
+  // frames; otherwise they can be laid out against the old 1×1 startup
+  // rectangle and remain invisible until another window resize.
+  leftLayout_->invalidate();
+  leftLayout_->activate();
+
+  // These frames deliberately use direct geometry inside one stable parent.
+  // A QGridLayout turned each requested preview size into a dialog minimum
+  // and distributed spare height between rows. Direct placement keeps the
+  // one-pixel joins exact without reparenting the native OBS views.
+  const QRect area = previewContainer_->rect();
+  if (zoomed_) {
+    channels_[selected_].frame->setGeometry(area);
+  } else {
+    const int widthLimit = std::max(1, (area.width() - horizontalGap) / 2);
+    const int heightLimit = std::max(1, (area.height() - verticalGap) / 2);
+    const int cellWidth = std::max(
+        1, std::min(widthLimit, static_cast<int>(
+                                    std::floor(heightLimit * (16.0 / 9.0)))));
+    const int cellHeight = std::max(
+        1, static_cast<int>(std::floor(cellWidth * (9.0 / 16.0))));
+    const int occupiedWidth = cellWidth * 2 + horizontalGap;
+    const int occupiedHeight = cellHeight * 2 + verticalGap;
+    const int offsetX = std::max(0, (area.width() - occupiedWidth) / 2);
+    const int offsetY = std::max(0, (area.height() - occupiedHeight) / 2);
+    for (int i = 0; i < 4; ++i) {
+      const int row = i / 2;
+      const int column = i % 2;
+      channels_[i].frame->setGeometry(
+          offsetX + column * (cellWidth + horizontalGap),
+          offsetY + row * (cellHeight + verticalGap), cellWidth, cellHeight);
     }
   }
 }
 
 void CcuWindow::resizeEvent(QResizeEvent *event) {
   QDialog::resizeEvent(event);
-  updatePreviewSizes();
+  if (scopeTabs_ && rightPanel_) {
+    const int scopeHeight =
+        std::clamp(static_cast<int>(std::lround(rightPanel_->height() * 0.53)),
+                   300, 465);
+    scopeTabs_->setFixedHeight(scopeHeight);
+  }
+  // At this point the dialog has its new size but its child layouts and
+  // native OBS views may still have their old geometry. One queued update
+  // per event-loop pass lets Qt settle the layout first, then the child
+  // resizeEvents call obs_display_resize with the final dimensions.
+  if (!previewResizePending_) {
+    previewResizePending_ = true;
+    QTimer::singleShot(0, this, [this] { updatePreviewSizes(); });
+  }
 }
 
 void CcuWindow::updateScopes() {
@@ -601,6 +860,8 @@ void CcuWindow::updateScopes() {
     return;
   obs_source_t *source = channels_[selected_].source;
   if (!source) {
+    lastScopeData_ = ScopeData{};
+    lastScopeChannel_ = -1;
     histogram_->clear();
     waveform_->clear();
     vectorscope_->clear();
@@ -612,13 +873,19 @@ void CcuWindow::updateScopes() {
   const ScopeData scope =
       analyzeScopeFrame(frame.rgba.data(), frame.width, frame.height,
                         frame.stride);
+  lastScopeData_ = scope;
+  lastScopeChannel_ = selected_;
   histogram_->setScopeData(scope);
   waveform_->setScopeData(scope);
   vectorscope_->setScopeData(scope);
 }
 
 void CcuWindow::sampleWhite(int channelIndex, const QPointF &normalized) {
-  selectChannel(channelIndex);
+  // The eyedropper is deliberately locked to the selected camera. Keep this
+  // guard even though inactive previews do not forward picker clicks: it
+  // prevents any future input path from applying a sample to the wrong source.
+  if (!pickerActive_ || channelIndex != selected_)
+    return;
   obs_source_t *source = channels_[channelIndex].source;
   obs_source_t *filter = ensureFilter(source);
   if (!source || !filter)
@@ -693,6 +960,7 @@ void showCcuWindow() {
     activeWindow->setAttribute(Qt::WA_DeleteOnClose);
   }
   activeWindow->show();
+  activeWindow->applyWindowAspectRatio();
   activeWindow->raise();
   activeWindow->activateWindow();
 #ifdef __APPLE__
@@ -715,6 +983,7 @@ void showCcuWindow() {
     if (QWindow *handle = activeWindow->windowHandle())
       handle->requestActivate();
 #ifdef __APPLE__
+    activeWindow->applyWindowAspectRatio();
     ccuActivateWindowMac(reinterpret_cast<void *>(activeWindow->winId()));
 #endif
   });

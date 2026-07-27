@@ -1,17 +1,20 @@
 #pragma once
 
+#include "scope-data.hpp"
+
 #include <QDialog>
 
 #include <array>
 
 class QComboBox;
 class QFrame;
-class QGridLayout;
 class QLabel;
 class QPushButton;
+class QToolButton;
 class QResizeEvent;
 class QSlider;
 class QTimer;
+class QTabWidget;
 class QVBoxLayout;
 class ObsDisplayWidget;
 class ScopeWidget;
@@ -24,6 +27,7 @@ public:
   ~CcuWindow() override;
 
   void refreshSources();
+  void applyWindowAspectRatio();
 
 protected:
   void resizeEvent(QResizeEvent *event) override;
@@ -39,11 +43,15 @@ private:
 
   void selectChannel(int index);
   void chooseSource(int index);
+  void showSourceMenu(int index, const QPoint &globalPosition);
   void updateSelectedUi();
   void applyControls();
   void resetControls();
   void togglePicker();
   void toggleZoom();
+  void toggleScopeFreeze();
+  void toggleCompare();
+  void updateComparePreview();
   void sampleWhite(int channel, const QPointF &normalized);
   void updateScopes();
   void relayoutChannels();
@@ -53,15 +61,18 @@ private:
   void saveAssignments() const;
 
   std::array<Channel, 4> channels_{};
-  std::array<QPushButton *, 4> selectButtons_{};
+  std::array<QToolButton *, 4> selectButtons_{};
   int selected_ = 0;
   bool pickerActive_ = false;
   bool zoomed_ = false;
   QWidget *leftPanel_ = nullptr;
+  QWidget *rightPanel_ = nullptr;
+  QWidget *previewContainer_ = nullptr;
   QVBoxLayout *leftLayout_ = nullptr;
-  QGridLayout *previewGrid_ = nullptr;
-  QPushButton *pickerButton_ = nullptr;
-  QPushButton *zoomButton_ = nullptr;
+  QToolButton *pickerButton_ = nullptr;
+  QToolButton *zoomButton_ = nullptr;
+  QToolButton *freezeButton_ = nullptr;
+  QToolButton *compareButton_ = nullptr;
   QLabel *status_ = nullptr;
   QSlider *red_ = nullptr;
   QSlider *green_ = nullptr;
@@ -73,8 +84,13 @@ private:
   ScopeWidget *histogram_ = nullptr;
   ScopeWidget *waveform_ = nullptr;
   ScopeWidget *vectorscope_ = nullptr;
+  QTabWidget *scopeTabs_ = nullptr;
   QTimer *scopeTimer_ = nullptr;
+  ScopeData lastScopeData_;
+  int lastScopeChannel_ = -1;
+  int frozenScopeChannel_ = -1;
   bool updating_ = false;
+  bool previewResizePending_ = false;
 };
 
 void showCcuWindow();

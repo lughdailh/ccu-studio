@@ -8,31 +8,40 @@ Plugin de control de càmeres per a OBS Studio. Reuneix fins a quatre fonts de
 vídeo en una finestra CCU, permet comparar-les simultàniament i aplica
 correccions persistents a la font original.
 
-La versió actual és **0.2.6** i està orientada a proves en macOS. El disseny
-tècnic evita API exclusives de macOS per facilitar la futura versió Windows.
+La versió actual és **0.3.0** i està orientada a proves en macOS i Windows.
+
+![CCU OBS 0.3.0 amb quatre previsualitzacions, scopes i controls](docs/images/ccu-obs-0.3.0.png)
 
 ## Funcions actuals
 
 - Finestra independent oberta des del menú d'eines d'OBS.
-- Quatre visors 16:9 que reutilitzen fonts ja obertes per OBS.
+- Mosaic de quatre visors 16:9, separats per 1 píxel, que reutilitzen fonts
+  ja obertes per OBS.
 - Assignació independent de fonts i selecció de la càmera activa.
 - Controls RGB, brillantor, contrast, gamma i saturació.
 - Aplicació immediata mitjançant un filtre GPU propi.
 - Comptagotes restringit al rectangle real del vídeo.
 - Lupa aproximada de 18×, retícula i punt central de selecció.
 - Vista ampliada de la càmera activa.
+- Referència congelada simultània de l'histograma, waveform i vectorscopi
+  per comparar dues càmeres.
+- Comparació partida original/correcció només dins del visor actiu, sense
+  alterar la sortida, la gravació ni l'emissió d'OBS.
 - Persistència del filtre a la font i de les assignacions del CCU.
-- Finestra centrada al 85% de l'àrea útil de la pantalla.
+- Mida inicial adaptativa, centrada, amb proporció 5:3 i limitada al 85% de
+  l'àrea útil de l'escriptori (màxim 1650 × 990 píxels lògics).
 
 ## Ús ràpid
 
 1. Obre OBS i selecciona **Eines → CCU OBS…**.
-2. Assigna una font a cada visor i selecciona la càmera activa amb els botons
-   `1`–`4` o clicant el visor.
+2. Fes clic dret sobre cada visor per assignar-hi una font. Selecciona la
+   càmera activa amb els botons `1`–`4` o clicant el visor.
 3. Mou els controls. El plugin afegeix a la font un filtre propi `CCU OBS`.
 4. Activa **Comptagotes** i clica un blanc o gris neutre. Els marges i les
    bandes negres no accepten clics.
 5. Utilitza **Lupa** per ampliar temporalment la càmera activa.
+6. Activa **Original** per veure l'original a l'esquerra i la correcció a la
+   dreta del visor actiu.
 
 Els canvis afecten totes les aparicions de la font: preview, programa,
 gravació i emissió.
@@ -40,10 +49,13 @@ gravació i emissió.
 ## Documentació
 
 - [Guia d'ús i instal·lació](docs/USER_GUIDE.md)
+- [English user and installation guide](docs/USER_GUIDE.en.md)
 - [Arquitectura tècnica](docs/ARCHITECTURE.md)
 - [Desenvolupament, compilació i proves](docs/DEVELOPMENT.md)
 - [Estat, limitacions i full de ruta](docs/ROADMAP.md)
 - [Especificació inicial del projecte](projecte%20CCU%20OBS.md)
+- [Notes de la versió 0.3.0](docs/RELEASE_NOTES_0.3.0.md) ·
+  [English release notes](docs/RELEASE_NOTES_0.3.0.en.md)
 
 ## Compilació ràpida
 
@@ -61,6 +73,15 @@ ctest --test-dir build-release --output-on-failure
 ```
 
 El bundle resultant és `build-release/obs-ccu.plugin`.
+
+## Instal·lació
+
+- **macOS:** descomprimeix el paquet i copia `obs-ccu.plugin` a
+  `~/Library/Application Support/obs-studio/plugins/`.
+- **Windows:** descomprimeix la carpeta `obs-ccu` a
+  `%APPDATA%\obs-studio\plugins\`.
+
+Tanca completament OBS abans de copiar o substituir el plugin.
 
 ## Estat
 

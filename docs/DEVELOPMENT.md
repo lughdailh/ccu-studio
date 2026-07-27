@@ -8,7 +8,7 @@
 - Qt 6 Widgets.
 - Xcode per a macOS.
 
-La versió 0.1.2 utilitza dependències universals d'OBS 31.1.1 i es valida en
+La versió 0.3.0 utilitza dependències universals d'OBS 31.1.1 i es valida en
 temps d'execució amb OBS 32.2.
 
 ## Compilació macOS universal
@@ -56,6 +56,24 @@ notarització i un instal·lador.
 ```
 
 Tanca completament OBS abans de substituir el bundle.
+
+## Compilació Windows
+
+El workflow `.github/workflows/windows-build.yaml` compila Windows x64 amb
+OBS 31.1.1 i les dependències oficials d'OBS. Cada push genera un artefacte;
+els tags `vX.Y.Z` creen o actualitzen una GitHub Release.
+
+El ZIP de Windows conté:
+
+```text
+obs-ccu/
+  bin/64bit/obs-ccu.dll
+  data/ccu-color.effect
+  data/ccu-compare.effect
+  data/icons/
+  data/locale/
+  data/CCUOBS_TTL.png
+```
 
 ## Verificació manual
 

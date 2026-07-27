@@ -4,6 +4,7 @@
 #include <obs-module.h>
 
 #include <QAction>
+#include <QTimer>
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("obs-ccu", "ca-ES")
@@ -131,6 +132,8 @@ bool obs_module_load(void) {
       obs_frontend_add_tools_menu_qaction(obs_module_text("ToolsMenuItem")));
   QObject::connect(toolsAction, &QAction::triggered, [] { showCcuWindow(); });
   obs_frontend_add_event_callback(frontendEvent, nullptr);
+  if (qEnvironmentVariableIsSet("CCU_AUTO_SHOW"))
+    QTimer::singleShot(750, [] { showCcuWindow(); });
   blog(LOG_INFO, "[CCU OBS] Loaded version %s", CCU_VERSION);
   return true;
 }

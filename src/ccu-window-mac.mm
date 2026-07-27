@@ -16,3 +16,13 @@ void ccuActivateWindowMac(void *nsView) {
     [window orderFrontRegardless];
   }
 }
+
+void ccuSetWindowAspectRatioMac(void *nsView, double ratio) {
+  @autoreleasepool {
+    NSView *view = (__bridge NSView *)nsView;
+    NSWindow *window = view.window;
+    if (!window || ratio <= 0.0)
+      return;
+    [window setContentAspectRatio:NSMakeSize(ratio, 1.0)];
+  }
+}

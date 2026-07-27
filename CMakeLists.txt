@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(obs-ccu VERSION 0.2.6 LANGUAGES CXX)
+project(obs-ccu VERSION 0.3.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -57,6 +57,15 @@ if(APPLE)
     COMMAND ${CMAKE_COMMAND} -E copy
             "${CMAKE_CURRENT_SOURCE_DIR}/data/ccu-color.effect"
             "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/ccu-color.effect"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_SOURCE_DIR}/data/ccu-compare.effect"
+            "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/ccu-compare.effect"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/material/icons"
+            "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/icons"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_SOURCE_DIR}/material/CCUOBS_TTL.png"
+            "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/CCUOBS_TTL.png"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/data/locale"
             "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/locale"
