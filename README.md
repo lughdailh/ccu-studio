@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="material/CCUstudio.svg" alt="CCU Studio" width="390">
-</p>
-
 # CCU Studio
 
 Plugin de control de càmeres per a OBS Studio. Reuneix fins a quatre fonts de
