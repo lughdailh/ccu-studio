@@ -10,7 +10,7 @@ correccions persistents a la font original.
 
 La versió actual és **0.3.1** i està orientada a proves en macOS i Windows.
 
-![CCU Studio amb quatre previsualitzacions, scopes i controls](docs/images/ccu-obs-0.3.0.png)
+![CCU Studio 0.3.1 amb previsualitzacions, vectorscopi i controls](docs/images/ccu-studio-0.3.1.png)
 
 ## Funcions actuals
 

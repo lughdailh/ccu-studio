@@ -27,6 +27,7 @@
 #include <QGuiApplication>
 #include <QResizeEvent>
 #include <QScreen>
+#include <QScrollBar>
 #include <QSlider>
 #include <QTabWidget>
 #include <QTextBrowser>
@@ -516,6 +517,7 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
                    QStringLiteral("<br><br><span style=\"color:#999\">") +
                    QString::fromUtf8(obs_module_text("HelpCredits")) +
                    QStringLiteral("</span>"));
+    guide->moveCursor(QTextCursor::Start);
     layout->addWidget(guide, 1);
 
     auto *footer = new QHBoxLayout;
@@ -541,6 +543,8 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
     footer->addStretch();
     footer->addWidget(close);
     layout->addLayout(footer);
+    QTimer::singleShot(0, guide,
+                       [guide] { guide->verticalScrollBar()->setValue(0); });
     help.exec();
   });
   instructionsButton_->raise();

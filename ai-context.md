@@ -32,7 +32,8 @@
 - Botons circulars blaus de càmera i eines; icones blanques a
   `material/icons/`.
 - Pestanyes dels scopes sota el visor.
-- Captura oficial: `docs/images/ccu-obs-0.3.0.png`.
+- Captura oficial: `docs/images/ccu-studio-0.3.1.png`, feta amb la build
+  instal·lada realment a OBS 32.2.
 - Idiomes: català (`ca-ES`, reserva) i anglès (`en-US`).
 - Botó discret **Instruccions** a la cantonada inferior esquerra.
 - La guia s'obre integrada en una finestra modal i adapta automàticament
