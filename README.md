@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="material/logo_ccu.png" alt="Logo de CCU OBS" width="200">
+  <img src="material/CCUstudio.svg" alt="CCU Studio" width="390">
 </p>
 
-# CCU OBS
+# CCU Studio
 
 Plugin de control de càmeres per a OBS Studio. Reuneix fins a quatre fonts de
 vídeo en una finestra CCU, permet comparar-les simultàniament i aplica
 correccions persistents a la font original.
 
-La versió actual és **0.3.0** i està orientada a proves en macOS i Windows.
+La versió actual és **0.3.1** i està orientada a proves en macOS i Windows.
 
-![CCU OBS 0.3.0 amb quatre previsualitzacions, scopes i controls](docs/images/ccu-obs-0.3.0.png)
+![CCU Studio amb quatre previsualitzacions, scopes i controls](docs/images/ccu-obs-0.3.0.png)
 
 ## Funcions actuals
 
@@ -33,10 +33,10 @@ La versió actual és **0.3.0** i està orientada a proves en macOS i Windows.
 
 ## Ús ràpid
 
-1. Obre OBS i selecciona **Eines → CCU OBS…**.
+1. Obre OBS i selecciona **Eines → CCU Studio…**.
 2. Fes clic dret sobre cada visor per assignar-hi una font. Selecciona la
    càmera activa amb els botons `1`–`4` o clicant el visor.
-3. Mou els controls. El plugin afegeix a la font un filtre propi `CCU OBS`.
+3. Mou els controls. El plugin afegeix a la font un filtre propi `CCU Studio`.
 4. Activa **Comptagotes** i clica un blanc o gris neutre. Els marges i les
    bandes negres no accepten clics.
 5. Utilitza **Lupa** per ampliar temporalment la càmera activa.
@@ -56,6 +56,8 @@ gravació i emissió.
 - [Especificació inicial del projecte](projecte%20CCU%20OBS.md)
 - [Notes de la versió 0.3.0](docs/RELEASE_NOTES_0.3.0.md) ·
   [English release notes](docs/RELEASE_NOTES_0.3.0.en.md)
+- [Notes de la versió 0.3.1](docs/RELEASE_NOTES_0.3.1.md) ·
+  [English release notes](docs/RELEASE_NOTES_0.3.1.en.md)
 
 ## Compilació ràpida
 
@@ -92,5 +94,16 @@ una fase posterior.
 
 ## Llicència
 
-Projecte privat en desenvolupament. No es concedeixen drets de redistribució
-fins que el repositori incorpori una llicència explícita.
+CCU Studio és programari lliure distribuït sota la
+[GNU General Public License v2.0 or later](LICENSE) (`GPL-2.0-or-later`).
+
+## Crèdits i suport
+
+El desenvolupament de CCU Studio ha comptat principalment amb l'assistència
+d'**OpenAI Codex/ChatGPT** i **Claude**, sota direcció, proves i revisió
+humanes. Aquest reconeixement no implica afiliació ni aval per part d'OpenAI
+o Anthropic.
+
+Si CCU Studio et resulta útil, pots
+[ajudar a desenvolupar més eines mitjançant PayPal](https://www.paypal.com/ncp/payment/PLB-LY4PW9EJNVML).
+Gràcies per col·laborar amb el projecte.

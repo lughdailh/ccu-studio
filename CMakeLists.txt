@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(obs-ccu VERSION 0.3.0 LANGUAGES CXX)
+project(obs-ccu VERSION 0.3.1 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -64,11 +64,14 @@ if(APPLE)
             "${CMAKE_CURRENT_SOURCE_DIR}/material/icons"
             "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/icons"
     COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_CURRENT_SOURCE_DIR}/material/CCUOBS_TTL.png"
-            "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/CCUOBS_TTL.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/material/CCUstudio.svg"
+            "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/CCUstudio.svg"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/data/locale"
             "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/locale"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+            "$<TARGET_BUNDLE_CONTENT_DIR:obs-ccu>/Resources/LICENSE"
     VERBATIM
   )
 endif()

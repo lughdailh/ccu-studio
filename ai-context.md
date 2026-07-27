@@ -1,12 +1,12 @@
-# AI Context — CCU OBS
+# AI Context — CCU Studio
 
 ## Estat actual
 
-- Projecte privat: `lughdailh/obs-ccu`.
-- Versió: **0.3.0**.
+- Projecte privat en procés de canvi de nom a `lughdailh/ccu-studio`.
+- Versió en desenvolupament: **0.3.1**.
 - Plugin natiu d’OBS, Qt 6 + libobs, compatible amb macOS i Windows x64.
 - OBS de referència: 32.2; SDK/dependències de compilació: OBS 31.1.1.
-- Finestra no modal oberta des de **Eines → CCU OBS…**.
+- Finestra no modal oberta des de **Eines → CCU Studio…**.
 
 ## Funcionalitat
 
@@ -14,7 +14,8 @@
 - Assignació de font amb clic dret; els visors buits mostren una ajuda grisa.
 - Una sola càmera activa, marcada amb una vora daurada interior d’1 píxel.
 - Controls compartits: RGB, brillantor, contrast, gamma i saturació.
-- Filtre GPU `CCU OBS` persistent aplicat directament a la font.
+- Filtre GPU `CCU Studio` persistent aplicat directament a la font.
+- Compatibilitat amb el filtre intern `CCU OBS` creat per versions anteriors.
 - Comptagotes restringit exclusivament a la càmera activa i al rectangle real
   del vídeo; lupa de mostra amb retícula i punt central.
 - Botó **Lupa**: la càmera activa ocupa exactament el rectangle del mosaic 2×2,
@@ -26,13 +27,18 @@
 
 ## Interfície
 
-- Composició 5:3 amb logotip `material/CCUOBS_TTL.png`.
+- Composició 5:3 amb logotip `material/CCUstudio.svg`.
 - Mida inicial: 85% de l’àrea útil, centrada; màxim 1650×990 píxels lògics.
 - Botons circulars blaus de càmera i eines; icones blanques a
   `material/icons/`.
 - Pestanyes dels scopes sota el visor.
 - Captura oficial: `docs/images/ccu-obs-0.3.0.png`.
 - Idiomes: català (`ca-ES`, reserva) i anglès (`en-US`).
+- Botó discret **Instruccions** a la cantonada inferior esquerra.
+- La guia s'obre integrada en una finestra modal i adapta automàticament
+  català/anglès a l'idioma d'OBS.
+- El botó de suport per PayPal és fix al peu de la guia; no apareix a la
+  interfície principal.
 
 ## Fitxers clau
 
@@ -57,6 +63,8 @@ ctest --test-dir build-release --output-on-failure
 - macOS distribuït com a bundle universal arm64+x86_64 amb signatura ad hoc.
 - Windows empaquetat com
   `obs-ccu/bin/64bit/obs-ccu.dll` + `obs-ccu/data/`.
+- Els identificadors tècnics `obs-ccu` i `ccu_obs_color_filter` es conserven
+  per compatibilitat; el nom públic i els assets de Release són CCU Studio.
 
 ## Decisions i límits importants
 
@@ -68,7 +76,14 @@ ctest --test-dir build-release --output-on-failure
 - A macOS la finestra es porta al davant mitjançant AppKit.
 - La build macOS encara no està notaritzada; és per a proves.
 
-## Publicació 0.3.0 completada
+## Llicència, crèdits i suport
+
+- Llicència: `GPL-2.0-or-later`; text canònic a `LICENSE`.
+- El projecte acredita l'assistència principal d'OpenAI Codex/ChatGPT i
+  Claude, sota direcció i revisió humanes.
+- Donacions: `https://www.paypal.com/ncp/payment/PLB-LY4PW9EJNVML`.
+
+## Publicació 0.3.0 completada (històric)
 
 - Commit principal: `411d5ce` (`Release CCU OBS 0.3.0`).
 - Tag i Release: `v0.3.0`.

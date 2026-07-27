@@ -2,7 +2,7 @@
 
 ## Visió general
 
-CCU OBS és un plugin natiu C++17 format per tres parts:
+CCU Studio és un plugin natiu C++17 format per tres parts:
 
 ```text
 Finestra Qt
@@ -12,7 +12,7 @@ Finestra Qt
     └── controls compartits ──> settings del filtre actiu
                                       │
                                       ▼
-                              filtre GPU CCU OBS
+                              filtre GPU CCU Studio
 ```
 
 No es creen quatre instàncies d'OBS ni es tornen a obrir dispositius. Cada
@@ -22,7 +22,7 @@ visor conserva una referència a una font existent i la renderitza amb
 ## Integració frontend
 
 `src/ccu-filter.cpp` registra el filtre `ccu_obs_color_filter`, l'acció
-**CCU OBS…** al menú d'eines i el tancament segur de la finestra quan OBS surt
+**CCU Studio…** al menú d'eines i el tancament segur de la finestra quan OBS surt
 o canvia de col·lecció. La finestra és no modal.
 
 ## Visors

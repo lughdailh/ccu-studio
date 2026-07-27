@@ -8,7 +8,7 @@
 - Qt 6 Widgets.
 - Xcode per a macOS.
 
-La versió 0.3.0 utilitza dependències universals d'OBS 31.1.1 i es valida en
+La versió 0.3.1 utilitza dependències universals d'OBS 31.1.1 i es valida en
 temps d'execució amb OBS 32.2.
 
 ## Compilació macOS universal
@@ -72,7 +72,8 @@ obs-ccu/
   data/ccu-compare.effect
   data/icons/
   data/locale/
-  data/CCUOBS_TTL.png
+  data/CCUstudio.svg
+  LICENSE
 ```
 
 ## Verificació manual

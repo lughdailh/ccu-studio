@@ -302,7 +302,7 @@ bool ObsDisplayWidget::ensureCompareResources() {
     compareEffect_ =
         path ? gs_effect_create_from_file(path, &errors) : nullptr;
     if (!compareEffect_)
-      blog(LOG_ERROR, "[CCU OBS] Compare shader error: %s",
+      blog(LOG_ERROR, "[CCU Studio] Compare shader error: %s",
            errors ? errors : "effect not found");
     bfree(errors);
     bfree(path);

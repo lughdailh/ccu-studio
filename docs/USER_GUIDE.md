@@ -18,13 +18,13 @@ Tanca OBS i copia `obs-ccu.plugin` a:
 Torna a obrir OBS. El registre ha d'incloure:
 
 ```text
-[CCU OBS] Loaded version 0.3.0
+[CCU Studio] Loaded version 0.3.1
 ```
 
 ## Instal·lació a Windows
 
 1. Tanca completament OBS.
-2. Descomprimeix el paquet `obs-ccu-0.3.0-windows-x64.zip`.
+2. Descomprimeix el paquet `ccu-studio-0.3.1-windows-x64.zip`.
 3. Copia la carpeta `obs-ccu` sencera a:
 
 ```text
@@ -34,11 +34,11 @@ Torna a obrir OBS. El registre ha d'incloure:
 El resultat ha de contenir
 `%APPDATA%\obs-studio\plugins\obs-ccu\bin\64bit\obs-ccu.dll` i
 `%APPDATA%\obs-studio\plugins\obs-ccu\data\`.
-Torna a obrir OBS i busca `CCU OBS` al menú **Eines**.
+Torna a obrir OBS i busca `CCU Studio` al menú **Eines**.
 
 ## Obrir i assignar càmeres
 
-1. Obre **Eines → CCU OBS…**.
+1. Obre **Eines → CCU Studio…**.
 2. Fes clic dret sobre un visor i escull la seva font al menú contextual.
 3. El CCU manté activa la font mentre la mostra, encara que no sigui visible a
    l'escena actual. No obre físicament la càmera una segona vegada.
@@ -111,7 +111,7 @@ poden recuperar completament.
 
 ## Persistència
 
-Cada font rep un filtre `CCU OBS`. El filtre pertany a la font original, no a
+Cada font rep un filtre `CCU Studio`. El filtre pertany a la font original, no a
 una instància concreta d'una escena. La correcció afecta totes les escenes on
 aparegui la font i es desa amb la col·lecció d'escenes.
 
@@ -125,8 +125,9 @@ Comprova la ruta del bundle i busca `obs-ccu` al registre d'OBS.
 
 ### Els controls es mouen però la imatge no canvia
 
-Confirma que el títol mostra 0.3.0 o posterior i que la font conté el filtre
-`CCU OBS`. Reinicia OBS després de substituir un bundle.
+Confirma que el títol mostra 0.3.1 o posterior i que la font conté el filtre
+`CCU Studio` (o `CCU OBS` si prové d'una versió anterior). Reinicia OBS després
+de substituir un bundle.
 
 ### No hi ha imatge en un visor
 
@@ -137,3 +138,17 @@ si ha estat eliminada o recreada.
 
 Només són vàlids els píxels dins del rectangle real de la font. Les bandes
 afegides pel visor queden excloses deliberadament.
+
+## Instruccions i suport
+
+El botó discret **Instruccions**, situat a la cantonada inferior esquerra,
+obre una guia integrada en l'idioma actiu d'OBS. Al peu d'aquesta finestra hi
+ha el botó **Donar suport**, que obre PayPal; la donació és voluntària i ajuda
+a desenvolupar més eines.
+
+## Llicència i crèdits
+
+CCU Studio es distribueix sota `GPL-2.0-or-later`. El desenvolupament ha
+comptat principalment amb l'assistència d'OpenAI Codex/ChatGPT i Claude, sota
+direcció, proves i revisió humanes. Aquesta menció no implica afiliació ni
+aval d'OpenAI o Anthropic.

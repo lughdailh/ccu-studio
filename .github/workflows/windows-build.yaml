@@ -86,7 +86,7 @@ jobs:
           cmake --build $obsBuild --target obs-frontend-api --config Release --parallel
           if ($LASTEXITCODE -ne 0) { throw "obs-frontend-api build failed" }
 
-      - name: Configure CCU OBS
+      - name: Configure CCU Studio
         run: |
           $ErrorActionPreference = 'Stop'
           $obsSrc = ".deps/obs-studio-$env:OBS_VERSION"
@@ -106,13 +106,13 @@ jobs:
             "-Dobs-frontend-api_DIR=$frontendApiDir" `
             "-Dw32-pthreads_DIR=$pthreadsDir" `
             "-DCMAKE_PREFIX_PATH=$qt6Prefix"
-          if ($LASTEXITCODE -ne 0) { throw "CCU OBS configure failed" }
+          if ($LASTEXITCODE -ne 0) { throw "CCU Studio configure failed" }
 
-      - name: Build CCU OBS
+      - name: Build CCU Studio
         run: |
           $ErrorActionPreference = 'Stop'
           cmake --build build --config Release --target obs-ccu scope-data-tests
-          if ($LASTEXITCODE -ne 0) { throw "CCU OBS build failed" }
+          if ($LASTEXITCODE -ne 0) { throw "CCU Studio build failed" }
 
       - name: Run tests
         run: |
@@ -136,9 +136,10 @@ jobs:
           Copy-Item "data/ccu-compare.effect" "$stageDir/data/ccu-compare.effect"
           Copy-Item "data/locale/*.ini" "$stageDir/data/locale/"
           Copy-Item "material/icons/*.png" "$stageDir/data/icons/"
-          Copy-Item "material/CCUOBS_TTL.png" "$stageDir/data/CCUOBS_TTL.png"
+          Copy-Item "material/CCUstudio.svg" "$stageDir/data/CCUstudio.svg"
+          Copy-Item "LICENSE" "$stageDir/LICENSE"
 
-          $zipName = "obs-ccu-$version-windows-x64.zip"
+          $zipName = "ccu-studio-$version-windows-x64.zip"
           Compress-Archive -Path $stageDir -DestinationPath "dist/$zipName" -Force
 
           "zipName=$zipName" >> $env:GITHUB_OUTPUT
@@ -162,7 +163,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: obs-ccu-${{ needs.build-windows.outputs.version }}-windows-x64.zip
+          name: ccu-studio-${{ needs.build-windows.outputs.version }}-windows-x64.zip
           path: dist
 
       - name: Create or update release
@@ -171,11 +172,11 @@ jobs:
         run: |
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
-          zip="dist/obs-ccu-${{ needs.build-windows.outputs.version }}-windows-x64.zip"
+          zip="dist/ccu-studio-${{ needs.build-windows.outputs.version }}-windows-x64.zip"
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$zip" --clobber
           else
             gh release create "$tag" "$zip" \
-              --title "CCU OBS $tag" \
+              --title "CCU Studio $tag" \
               --notes "Compilació automàtica per a Windows x64. Descomprimeix la carpeta \`obs-ccu\` dins de %APPDATA%\\obs-studio\\plugins\\."
           fi

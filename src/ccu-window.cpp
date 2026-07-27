@@ -8,6 +8,7 @@
 
 #include <QComboBox>
 #include <QDir>
+#include <QDesktopServices>
 #include <QFile>
 #include <QFileInfo>
 #include <QFrame>
@@ -28,8 +29,10 @@
 #include <QScreen>
 #include <QSlider>
 #include <QTabWidget>
+#include <QTextBrowser>
 #include <QTimer>
 #include <QToolButton>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QWindow>
 
@@ -46,7 +49,10 @@
 namespace {
 QPointer<CcuWindow> activeWindow;
 constexpr const char *filterId = "ccu_obs_color_filter";
-constexpr const char *filterName = "CCU OBS";
+// Keep the legacy filter name as a compatibility fallback: existing OBS
+// scenes created by 0.3.0 must keep using the same filter and settings.
+constexpr const char *filterName = "CCU Studio";
+constexpr const char *legacyFilterName = "CCU OBS";
 constexpr const char *keys[] = {"red_gain",  "green_gain", "blue_gain",
                                 "brightness", "contrast",   "gamma_value",
                                 "saturation"};
@@ -241,15 +247,15 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
 
   auto *title = new QLabel(this);
   title->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-  title->setFixedSize(290, 49);
+  title->setFixedSize(395, 49);
   title->setContentsMargins(9, 0, 0, 0);
-  char *titlePath = obs_module_file("CCUOBS_TTL.png");
+  char *titlePath = obs_module_file("CCUstudio.svg");
   const QPixmap titlePixels(titlePath ? QString::fromUtf8(titlePath)
                                       : QString());
   bfree(titlePath);
   if (!titlePixels.isNull())
     title->setPixmap(titlePixels.scaled(
-        281, 49, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        386, 47, Qt::KeepAspectRatio, Qt::SmoothTransformation));
   title->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
   rootLayout->addWidget(title, 0, Qt::AlignLeft);
 
@@ -472,6 +478,73 @@ CcuWindow::CcuWindow(QWidget *parent) : QDialog(parent) {
   mainLayout->addWidget(leftPanel, 31);
   mainLayout->addWidget(rightPanel, 10);
 
+  // A quiet, secondary action anchored to the lower-left corner. Donation
+  // lives inside the instructions window so it never competes with camera
+  // controls in the main CCU interface.
+  instructionsButton_ = new QToolButton(this);
+  instructionsButton_->setText(
+      QString::fromUtf8(obs_module_text("InstructionsButton")));
+  instructionsButton_->setToolTip(
+      QString::fromUtf8(obs_module_text("InstructionsTooltip")));
+  instructionsButton_->setAutoRaise(true);
+  instructionsButton_->setCursor(Qt::PointingHandCursor);
+  instructionsButton_->setStyleSheet(
+      QStringLiteral("QToolButton { color: #929292; border: 0; padding: 3px "
+                     "6px; background: transparent; }"
+                     "QToolButton:hover { color: #dddddd; }"));
+  instructionsButton_->adjustSize();
+  connect(instructionsButton_, &QToolButton::clicked, this, [this] {
+    QDialog help(this);
+    help.setWindowTitle(QString::fromUtf8(obs_module_text("HelpTitle")));
+    help.setModal(true);
+    help.resize(560, 520);
+    auto *layout = new QVBoxLayout(&help);
+    layout->setContentsMargins(22, 22, 22, 18);
+    layout->setSpacing(14);
+
+    auto *heading =
+        new QLabel(QStringLiteral("<b>%1</b>")
+                       .arg(QString::fromUtf8(obs_module_text("HelpTitle"))),
+                   &help);
+    heading->setStyleSheet(QStringLiteral("font-size: 18px;"));
+    layout->addWidget(heading);
+
+    auto *guide = new QTextBrowser(&help);
+    guide->setOpenExternalLinks(true);
+    guide->setFrameShape(QFrame::NoFrame);
+    guide->setHtml(QString::fromUtf8(obs_module_text("HelpText")) +
+                   QStringLiteral("<br><br><span style=\"color:#999\">") +
+                   QString::fromUtf8(obs_module_text("HelpCredits")) +
+                   QStringLiteral("</span>"));
+    layout->addWidget(guide, 1);
+
+    auto *footer = new QHBoxLayout;
+    auto *donate = new QPushButton(
+        QString::fromUtf8(obs_module_text("DonateButton")), &help);
+    donate->setToolTip(
+        QString::fromUtf8(obs_module_text("DonateTooltip")));
+    donate->setCursor(Qt::PointingHandCursor);
+    donate->setStyleSheet(
+        QStringLiteral("QPushButton { background:#192a63; color:white; "
+                       "border:1px solid #263b7d; border-radius:5px; "
+                       "padding:7px 12px; }"
+                       "QPushButton:hover { background:#243a82; }"));
+    connect(donate, &QPushButton::clicked, &help, [] {
+      QDesktopServices::openUrl(
+          QUrl(QStringLiteral("https://www.paypal.com/ncp/payment/"
+                              "PLB-LY4PW9EJNVML")));
+    });
+    auto *close = new QPushButton(
+        QString::fromUtf8(obs_module_text("CloseButton")), &help);
+    connect(close, &QPushButton::clicked, &help, &QDialog::accept);
+    footer->addWidget(donate);
+    footer->addStretch();
+    footer->addWidget(close);
+    layout->addLayout(footer);
+    help.exec();
+  });
+  instructionsButton_->raise();
+
   refreshSources();
   loadAssignments();
   selectChannel(0);
@@ -609,6 +682,9 @@ obs_source_t *CcuWindow::ensureFilter(obs_source_t *source) {
   if (obs_source_t *existing =
           obs_source_get_filter_by_name(source, filterName))
     return existing;
+  if (obs_source_t *legacy =
+          obs_source_get_filter_by_name(source, legacyFilterName))
+    return legacy;
   obs_data_t *settings = obs_data_create();
   obs_source_t *filter =
       obs_source_create_private(filterId, filterName, settings);
@@ -839,6 +915,13 @@ void CcuWindow::updatePreviewSizes() {
 
 void CcuWindow::resizeEvent(QResizeEvent *event) {
   QDialog::resizeEvent(event);
+  if (instructionsButton_) {
+    constexpr int left = 14;
+    constexpr int bottom = 9;
+    instructionsButton_->move(
+        left, height() - bottom - instructionsButton_->height());
+    instructionsButton_->raise();
+  }
   if (scopeTabs_ && rightPanel_) {
     const int scopeHeight =
         std::clamp(static_cast<int>(std::lround(rightPanel_->height() * 0.53)),

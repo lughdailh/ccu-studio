@@ -27,7 +27,7 @@ constexpr const char *keys[] = {"red_gain",  "green_gain", "blue_gain",
                                 "brightness", "contrast",   "gamma_value",
                                 "saturation"};
 
-const char *filterName(void *) { return "CCU OBS — correcció de color"; }
+const char *filterName(void *) { return obs_module_text("FilterName"); }
 
 void filterDefaults(obs_data_t *settings) {
   obs_data_set_default_double(settings, keys[0], 1.0);
@@ -56,7 +56,7 @@ void *filterCreate(obs_data_t *settings, obs_source_t *source) {
   obs_leave_graphics();
   bfree(path);
   if (!filter->effect) {
-    blog(LOG_ERROR, "[CCU OBS] Shader error: %s",
+    blog(LOG_ERROR, "[CCU Studio] Shader error: %s",
          errors ? errors : "effect not found");
     bfree(errors);
     delete filter;
@@ -123,7 +123,7 @@ void frontendEvent(enum obs_frontend_event event, void *) {
 } // namespace
 
 MODULE_EXPORT const char *obs_module_description(void) {
-  return "Four-camera CCU window for OBS Studio";
+  return "CCU Studio: four-camera matching and color control for OBS Studio";
 }
 
 bool obs_module_load(void) {
@@ -134,7 +134,7 @@ bool obs_module_load(void) {
   obs_frontend_add_event_callback(frontendEvent, nullptr);
   if (qEnvironmentVariableIsSet("CCU_AUTO_SHOW"))
     QTimer::singleShot(750, [] { showCcuWindow(); });
-  blog(LOG_INFO, "[CCU OBS] Loaded version %s", CCU_VERSION);
+  blog(LOG_INFO, "[CCU Studio] Loaded version %s", CCU_VERSION);
   return true;
 }
 

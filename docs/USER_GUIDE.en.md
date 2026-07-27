@@ -15,12 +15,12 @@ Close OBS, unzip the macOS package and copy `obs-ccu.plugin` to:
 ~/Library/Application Support/obs-studio/plugins/
 ```
 
-Reopen OBS and look for `CCU OBS` under **Tools**.
+Reopen OBS and look for `CCU Studio` under **Tools**.
 
 ## Install on Windows
 
 1. Close OBS completely.
-2. Unzip `obs-ccu-0.3.0-windows-x64.zip`.
+2. Unzip `ccu-studio-0.3.1-windows-x64.zip`.
 3. Copy the complete `obs-ccu` folder to:
 
 ```text
@@ -29,11 +29,11 @@ Reopen OBS and look for `CCU OBS` under **Tools**.
 
 The resulting path must contain
 `obs-ccu\bin\64bit\obs-ccu.dll` and `obs-ccu\data\`.
-Reopen OBS and look for `CCU OBS` under **Tools**.
+Reopen OBS and look for `CCU Studio` under **Tools**.
 
 ## Assign sources
 
-1. Open **Tools → CCU OBS…**.
+1. Open **Tools → CCU Studio…**.
 2. Right-click a preview and choose an OBS video source.
 3. Repeat for up to four cameras.
 4. Choose **No source** to clear a preview.
@@ -53,7 +53,7 @@ gold border identifies the active camera. Only that camera responds to:
 - Saturation.
 - Reset.
 
-Corrections are stored in a `CCU OBS` filter attached to the original source,
+Corrections are stored in a `CCU Studio` filter attached to the original source,
 so they also affect Program, recordings and streams.
 
 ## Eyedropper
@@ -96,4 +96,19 @@ cannot be reconstructed completely.
 - **Eyedropper rejects a click:** click inside the actual image, not a
   letterbox bar or another camera.
 - **Controls move but colour does not change:** confirm that the source owns a
-  filter named `CCU OBS`.
+  filter named `CCU Studio` (or `CCU OBS` when inherited from an earlier
+  version).
+
+## Instructions and support
+
+The discreet **Instructions** action in the lower-left corner opens a built-in
+guide in the active OBS language. The **Support** button is fixed at the foot
+of that window and opens PayPal; donations are optional and help fund the
+development of additional tools.
+
+## License and credits
+
+CCU Studio is distributed under `GPL-2.0-or-later`. Development was assisted
+primarily by OpenAI Codex/ChatGPT and Claude, under human direction, testing,
+and review. This acknowledgement does not imply affiliation with or
+endorsement by OpenAI or Anthropic.

@@ -73,6 +73,7 @@ private:
   QToolButton *zoomButton_ = nullptr;
   QToolButton *freezeButton_ = nullptr;
   QToolButton *compareButton_ = nullptr;
+  QToolButton *instructionsButton_ = nullptr;
   QLabel *status_ = nullptr;
   QSlider *red_ = nullptr;
   QSlider *green_ = nullptr;
