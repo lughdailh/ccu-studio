@@ -143,6 +143,7 @@ jobs:
 
           $zipName = "ccu-studio-$version-windows-x64.zip"
           Compress-Archive -Path $stageDir -DestinationPath "dist/$zipName" -Force
+          Copy-Item "dist/$zipName" "dist/ccu-studio-windows-x64.zip" -Force
 
           "zipName=$zipName" >> $env:GITHUB_OUTPUT
 
@@ -150,7 +151,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.package.outputs.zipName }}
-          path: dist/${{ steps.package.outputs.zipName }}
+          path: |
+            dist/${{ steps.package.outputs.zipName }}
+            dist/ccu-studio-windows-x64.zip
 
   release:
     name: Publish Windows release
@@ -175,10 +178,11 @@ jobs:
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
           zip="dist/ccu-studio-${{ needs.build-windows.outputs.version }}-windows-x64.zip"
+          stable_zip="dist/ccu-studio-windows-x64.zip"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$zip" --clobber
+            gh release upload "$tag" "$zip" "$stable_zip" --clobber
           else
-            gh release create "$tag" "$zip" \
+            gh release create "$tag" "$zip" "$stable_zip" \
               --title "CCU Studio $tag" \
               --notes "Compilació automàtica per a Windows x64. Descomprimeix la carpeta \`ccu-studio\` dins de %APPDATA%\\obs-studio\\plugins\\."
           fi
