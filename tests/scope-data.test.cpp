@@ -2,6 +2,10 @@
 
 #include <algorithm>
 #include <array>
+// Keep these checks active in the Release configuration used by CI.
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <cassert>
 #include <cstdint>
 
