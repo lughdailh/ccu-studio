@@ -49,6 +49,7 @@ if(APPLE)
     BUNDLE_EXTENSION plugin
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/packaging/Info.plist.in"
     OUTPUT_NAME "ccu-studio"
+    XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "cat.emprenyat.ccu-studio"
     BUILD_WITH_INSTALL_RPATH TRUE
     INSTALL_RPATH "@executable_path/../Frameworks"
   )
