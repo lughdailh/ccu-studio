@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
 
 env:
-  OBS_VERSION: "31.1.1"
-  OBS_DEPS_VERSION: "2025-07-11"
+  OBS_VERSION: "33.0.3"
+  OBS_DEPS_VERSION: "2026-10-23"
 
 jobs:
   build-windows:
     name: Build for Windows (x64)
-    runs-on: windows-2022
+    runs-on: windows-2025
     outputs:
       version: ${{ steps.version.outputs.version }}
     defaults:
@@ -33,9 +33,7 @@ jobs:
           "version=$projectVersion" >> $env:GITHUB_OUTPUT
           Write-Host "Plugin version: $projectVersion"
 
-      # Same obs-studio / obs-deps versions already validated locally for the
-      # macOS build (see CMakeCache.txt libobs_DIR / Qt6_DIR), so libobs,
-      # obs-frontend-api and Qt6 are known-compatible with this plugin.
+      # Match the OBS 33.0.3 upstream dependency versions.
       - name: Cache OBS Studio dependencies
         id: cache-deps
         uses: actions/cache@v4
@@ -80,7 +78,7 @@ jobs:
           Write-Host "Configuring obs-studio (libobs + obs-frontend-api only)..."
           cmake -S $obsSrc -B $obsBuild -G "Visual Studio 17 2022" -A x64 `
             "-DCMAKE_PREFIX_PATH=$prefixPath" `
-            -DENABLE_PLUGINS=OFF -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_HEVC=OFF `
+            -DENABLE_PLUGINS=OFF -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_HEVC=OFF -DENABLE_BROWSER=OFF `
             "-DOBS_VERSION_OVERRIDE=$env:OBS_VERSION"
           if ($LASTEXITCODE -ne 0) { throw "obs-studio configure failed" }
 
