@@ -2,7 +2,7 @@ name: Windows build
 
 on:
   push:
-    branches: [main]
+    branches: [main, "fix/obs-33-windows"]
     tags: ["v*.*.*"]
   pull_request:
   workflow_dispatch:
@@ -127,13 +127,12 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $version = "${{ steps.version.outputs.version }}"
-          $stageDir = "dist/ccu-studio"
+          $stageDir = "dist/obs33/ccu-studio"
 
-          New-Item -ItemType Directory -Force -Path "$stageDir/bin/64bit" | Out-Null
           New-Item -ItemType Directory -Force -Path "$stageDir/data/locale" | Out-Null
           New-Item -ItemType Directory -Force -Path "$stageDir/data/icons" | Out-Null
 
-          Copy-Item "build/Release/ccu-studio.dll" "$stageDir/bin/64bit/ccu-studio.dll"
+          Copy-Item "build/Release/ccu-studio.dll" "$stageDir/ccu-studio.dll"
           Copy-Item "data/ccu-color.effect" "$stageDir/data/ccu-color.effect"
           Copy-Item "data/ccu-compare.effect" "$stageDir/data/ccu-compare.effect"
           Copy-Item "data/locale/*.ini" "$stageDir/data/locale/"
@@ -145,6 +144,14 @@ jobs:
           Compress-Archive -Path $stageDir -DestinationPath "dist/$zipName" -Force
           Copy-Item "dist/$zipName" "dist/ccu-studio-windows-x64.zip" -Force
 
+          # Keep a separate legacy package for OBS 32 and earlier.
+          $legacy = "dist/legacy/ccu-studio"
+          New-Item -ItemType Directory -Force -Path "$legacy/bin/64bit" | Out-Null
+          Copy-Item "$stageDir/ccu-studio.dll" "$legacy/bin/64bit/"
+          Copy-Item "$stageDir/data" "$legacy/data" -Recurse
+          Copy-Item "$stageDir/LICENSE" "$legacy/LICENSE"
+          Compress-Archive -Path $legacy -DestinationPath "dist/ccu-studio-$version-windows-x64-legacy.zip" -Force
+
           "zipName=$zipName" >> $env:GITHUB_OUTPUT
 
       - name: Upload artifact
@@ -154,6 +161,7 @@ jobs:
           path: |
             dist/${{ steps.package.outputs.zipName }}
             dist/ccu-studio-windows-x64.zip
+            dist/ccu-studio-*-windows-x64-legacy.zip
 
   release:
     name: Publish Windows release
@@ -180,9 +188,9 @@ jobs:
           zip="dist/ccu-studio-${{ needs.build-windows.outputs.version }}-windows-x64.zip"
           stable_zip="dist/ccu-studio-windows-x64.zip"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$zip" "$stable_zip" --clobber
+            gh release upload "$tag" "$zip" "$stable_zip" dist/*-legacy.zip --clobber
           else
-            gh release create "$tag" "$zip" "$stable_zip" \
+            gh release create "$tag" "$zip" "$stable_zip" dist/*-legacy.zip \
               --title "CCU Studio $tag" \
-              --notes "Compilació automàtica per a Windows x64. Descomprimeix la carpeta \`ccu-studio\` dins de %APPDATA%\\obs-studio\\plugins\\."
+              --notes "Compilació automàtica per a Windows x64. Descomprimeix la carpeta \`ccu-studio\` dins de %ProgramData%\\obs-studio\\plugins\\ per a OBS 33."
           fi
