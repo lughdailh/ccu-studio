@@ -1,0 +1,28 @@
+name: macOS build
+on:
+  push:
+    branches: ["fix/obs-33-windows"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  macos-build:
+    name: macOS Universal (OBS 33.0.3)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-platform-version
+          cmake --version
+      - name: Build and verify universal plugin
+        run: bash .github/scripts/build-macos-obs33.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ccu-studio-0.3.3-macos-universal
+          path: |
+            dist/*-macos-universal.zip
+            dist/*-macos-universal.zip.sha256
+          if-no-files-found: error

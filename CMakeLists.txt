@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.28)
+if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum macOS version")
+endif()
+
 project(obs-ccu VERSION 0.3.3 LANGUAGES CXX)
+if(APPLE)
+  enable_language(OBJCXX)
+endif()
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -42,6 +49,8 @@ if(APPLE)
     BUNDLE_EXTENSION plugin
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/packaging/Info.plist.in"
     OUTPUT_NAME "ccu-studio"
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "@executable_path/../Frameworks"
   )
 elseif(WIN32)
   set_target_properties(obs-ccu PROPERTIES PREFIX "" OUTPUT_NAME "ccu-studio")

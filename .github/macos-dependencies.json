@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "obs-studio": {
+      "version": "33.0.3",
+      "baseUrl": "https://github.com/obsproject/obs-studio/archive/refs/tags",
+      "label": "OBS sources",
+      "hashes": {
+        "macos": "b0eff217a972e1dd9951ce24d66595c723dde847461b16de07eb33d75ec34659"
+      }
+    },
+    "prebuilt": {
+      "version": "2026-10-23",
+      "baseUrl": "https://github.com/obsproject/obs-deps/releases/download",
+      "label": "Pre-Built obs-deps",
+      "hashes": {
+        "macos": "6ded92c5d97f1d1b5effa07be13cc9f539826aa9c65013a15872328e39acffbf"
+      }
+    },
+    "qt6": {
+      "version": "2026-10-23",
+      "baseUrl": "https://github.com/obsproject/obs-deps/releases/download",
+      "label": "Pre-Built Qt6",
+      "hashes": {
+        "macos": "b216560cea8497207f9fc350c713716fb84aec6b973bb0ff8ac6add7734abad5"
+      }
+    }
+  }
+}

@@ -5,3 +5,5 @@ build-*/
 dist/
 *.code-workspace
 ai-context.md
+
+build_*/
